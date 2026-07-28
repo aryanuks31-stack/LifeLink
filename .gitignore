@@ -6,3 +6,5 @@ web-build/
 .DS_Store
 android/
 ios/
+.agents/
+skills-lock.json

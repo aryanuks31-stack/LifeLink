@@ -8,3 +8,9 @@ android/
 ios/
 .agents/
 skills-lock.json
+scripts/serviceAccountKey.json
+scripts/serviceAccountKey.json
+backend/src/config/serviceAccountKey.json
+**/serviceAccountKey.json
+backend/.env
+.env

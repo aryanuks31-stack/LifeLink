@@ -1,7 +1,6 @@
-import { DarkTheme, ThemeProvider } from 'expo-router';
-import { Stack } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import { AnimatedSplashOverlay } from '@/components/animated-icon';
+import { AnimatedSplashOverlay } from "@/components/animated-icon";
+import { DarkTheme, Stack, ThemeProvider } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
 
 SplashScreen.preventAutoHideAsync();
 

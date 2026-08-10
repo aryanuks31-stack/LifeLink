@@ -1,20 +1,55 @@
-import { AnimatedSplashOverlay } from "@/components/animated-icon";
-import { DarkTheme, Stack, ThemeProvider } from "expo-router";
-import * as SplashScreen from "expo-splash-screen";
-
-SplashScreen.preventAutoHideAsync();
+import React from 'react';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { Tabs } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { StatusBar } from 'react-native';
 
 export default function RootLayout() {
   return (
-    <ThemeProvider value={DarkTheme}>
-      <AnimatedSplashOverlay />
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="index" />
-        <Stack.Screen name="sos" />
-        <Stack.Screen name="medicines" />
-        <Stack.Screen name="beds" />
-        <Stack.Screen name="blood-donation" />
-      </Stack>
-    </ThemeProvider>
+    <SafeAreaProvider>
+      <StatusBar barStyle="dark-content" />
+      <Tabs
+        screenOptions={({ route }) => ({
+          headerShown: false,
+          tabBarActiveTintColor: '#e74c3c',
+          tabBarInactiveTintColor: '#666',
+          tabBarStyle: { height: 62, paddingBottom: 6 },
+          tabBarLabelStyle: { fontSize: 12 },
+          tabBarIcon: ({ color, size }) => {
+            let name: React.ComponentProps<typeof Ionicons>['name'] = 'ellipse';
+
+            // route.name matches the filename (without extension)
+            switch (route.name) {
+              case 'index':
+                name = 'home-outline';
+                break;
+              case 'sos':
+                name = 'warning-outline';
+                break;
+              case 'beds':
+                name = 'hospital-outline';
+                break;
+              case 'medicines':
+                name = 'medkit-outline';
+                break;
+              case 'blood-donation':
+                name = 'heart-outline';
+                break;
+              default:
+                name = 'ellipse-outline';
+            }
+
+            return <Ionicons name={name} size={size} color={color} />;
+          },
+        })}
+      >
+        {/* Explicit entries help with ordering and custom titles */}
+        <Tabs.Screen name="index" options={{ title: 'Home' }} />
+        <Tabs.Screen name="sos" options={{ title: 'SOS' }} />
+        <Tabs.Screen name="beds" options={{ title: 'Hospitals' }} />
+        <Tabs.Screen name="medicines" options={{ title: 'Medicines' }} />
+        <Tabs.Screen name="blood-donation" options={{ title: 'Blood' }} />
+      </Tabs>
+    </SafeAreaProvider>
   );
 }

@@ -1,6 +1,7 @@
-const hospitalRoutes = require("./routes/hospitalRoutes");
-const express = require("express");
+  const express = require("express");
 const cors = require("cors");
+const hospitalRoutes = require("./routes/hospitalRoutes");
+const sosRoutes = require("./routes/sosRoutes");
 
 const app = express();
 
@@ -13,6 +14,7 @@ app.get("/", (req, res) => {
   });
 });
 
-module.exports = app;
-app.use(express.json());
 app.use("/api/hospitals", hospitalRoutes);
+app.use("/api/sos", sosRoutes);
+
+module.exports = app;

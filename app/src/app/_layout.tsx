@@ -27,7 +27,7 @@ export default function RootLayout() {
                 name = 'warning-outline';
                 break;
               case 'beds':
-                name = 'hospital-outline';
+                name = 'medkit-outline';
                 break;
               case 'medicines':
                 name = 'medkit-outline';

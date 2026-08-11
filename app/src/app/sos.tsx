@@ -15,22 +15,20 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as Location from 'expo-location';
 
-// Replace with your backend or config import
 const BACKEND_URL = 'http://10.0.2.2:5000';
 const HOLD_MS = 2000;
-const DEMO_USER_ID = 'cbab8131-96e5-4ea4-a580-c8db339ffc5f'; // real seeded user for demo
+const DEMO_USER_ID = 'cbab8131-96e5-4ea4-a580-c8db339ffc5f';
 
 export default function SOSScreen() {
   const router = useRouter();
   const [holding, setHolding] = useState(false);
-  const [progress, setProgress] = useState(0); // 0..1
+  const [progress, setProgress] = useState(0);
   const progressRef = useRef(0);
   const timerRef = useRef<number | null>(null);
   const intervalRef = useRef<number | null>(null);
   const ringAnim = useRef(new Animated.Value(0)).current;
   const windowW = Dimensions.get('window').width;
 
-  // Mocked auxiliary info (replace with real state from API)
   const [driverEta] = useState('2 min away');
   const [nearestHospital] = useState('1.4 km, trauma');
   const [liveBeds] = useState(6);
@@ -108,22 +106,18 @@ export default function SOSScreen() {
         return;
       }
       Alert.alert('SOS sent', `Contacts notified: ${json.contactsNotified ?? 0}`);
-      // Optionally navigate to a confirmation screen
     } catch (err) {
       console.error('Network error', err);
-      Alert.alert('Network error', 'Could not reach server. Check your connection.');
+      Alert.alert('Network error', 'Could not reach the server. Check your connection.');
     }
   };
 
-  // Animated styles
   const ringScale = ringAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.06] });
   const ringOpacity = ringAnim.interpolate({ inputRange: [0, 1], outputRange: [0.18, 0.35] });
 
-  // Progress as circle stroke — approximate using scale and overlay
-  const outerSize = Math.min(360, windowW - 48);
+  const outerSize = Math.min(280, windowW - 80);
   const innerSize = outerSize * 0.62;
 
-  // Dark theme colors
   const bg = '#0f1113';
   const cardBg = '#161718';
   const chipBg = '#1f2224';
@@ -144,7 +138,7 @@ export default function SOSScreen() {
           <Text style={[styles.chipText, { color: textMuted }]}>Location shared automatically on tap</Text>
         </View>
 
-        <View style={[styles.center, { marginTop: 28 }]}>
+        <View style={styles.center}>
           <Animated.View
             style={[
               styles.ring,
@@ -160,7 +154,7 @@ export default function SOSScreen() {
             pointerEvents="none"
           />
 
-          <View style={{ position: 'absolute', alignItems: 'center' }}>
+          <View style={{ alignItems: 'center' }}>
             <Pressable
               onPressIn={startHold}
               onPressOut={cancelHold}
@@ -180,11 +174,8 @@ export default function SOSScreen() {
               <Text style={styles.sosText}>SOS</Text>
             </Pressable>
 
-            <View style={{ marginTop: 16 }}>
-              <Text style={styles.holdHint}>Hold for 2 seconds to trigger</Text>
-            </View>
+            <Text style={styles.holdHint}>Hold for 2 seconds to trigger</Text>
 
-            {/* progress indicator ring (small arc approximation) */}
             <View style={styles.progressTrack}>
               <View style={[styles.progressBar, { width: `${progress * 100}%` }]} />
             </View>
@@ -208,8 +199,6 @@ export default function SOSScreen() {
             </View>
           </View>
         </View>
-
-        <View style={{ flex: 1 }} />
 
         <Pressable
           style={[styles.bottomPill, { backgroundColor: cardBg }]}
@@ -237,34 +226,37 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingHorizontal: 18,
-    paddingTop: Platform.OS === 'android' ? 18 : 10,
+    paddingTop: Platform.OS === 'android' ? 12 : 10,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 4,
   },
-  headerTitle: { color: '#fff', fontSize: 18, fontWeight: '700' },
+  headerTitle: { color: '#fff', fontSize: 20, fontWeight: '700' },
 
   chip: {
-    marginTop: 14,
-    paddingVertical: 12,
+    marginTop: 10,
+    paddingVertical: 10,
     paddingHorizontal: 14,
     borderRadius: 12,
     flexDirection: 'row',
     alignItems: 'center',
   },
-  chipText: { fontSize: 14 },
+  chipText: { fontSize: 13 },
 
   center: {
     alignItems: 'center',
     justifyContent: 'center',
+    marginTop: 20,
   },
 
   ring: {
     position: 'absolute',
     alignItems: 'center',
     justifyContent: 'center',
+    alignSelf: 'center',
   },
 
   sosButton: {
@@ -279,7 +271,7 @@ const styles = StyleSheet.create({
   },
   sosText: { color: '#fff', fontSize: 22, fontWeight: '700', marginTop: 8 },
 
-  holdHint: { color: '#a6a6a6', textAlign: 'center', fontSize: 13 },
+  holdHint: { color: '#a6a6a6', textAlign: 'center', fontSize: 13, marginTop: 16 },
 
   progressTrack: {
     marginTop: 10,
@@ -296,7 +288,7 @@ const styles = StyleSheet.create({
 
   infoRow: {
     flexDirection: 'row',
-    marginTop: 26,
+    marginTop: 24,
     justifyContent: 'space-between',
     gap: 12,
   },
@@ -307,7 +299,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 6,
   },
   infoTitle: { fontSize: 13 },
   infoValue: { fontSize: 15, fontWeight: '700', color: '#fff', marginTop: 6 },
@@ -315,7 +306,8 @@ const styles = StyleSheet.create({
   bottomPill: {
     height: 62,
     borderRadius: 12,
-    marginBottom: 18,
+    marginTop: 20,
+    marginBottom: 12,
     paddingHorizontal: 16,
     alignItems: 'center',
     flexDirection: 'row',

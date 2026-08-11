@@ -15,7 +15,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 // Replace with your backend URL or import from config
-const BACKEND_URL = 'http://192.168.1.100:5000';
+const BACKEND_URL = 'http://10.0.2.2:5000';
 
 type Hospital = {
   id: string;

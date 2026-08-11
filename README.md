@@ -47,7 +47,7 @@ App: React Native (Expo)
 Navigation: React Navigation
 Backend: Firebase (Auth, Firestore, Cloud Functions)
 Maps & Location: Google Maps Platform, react-native-maps, expo-location
-SMS Alerts: Twilio
+SMS Alerts: FAST2SMS
 Push Notifications: Expo Notifications (FCM)
 Architecture
 [React Native App]
@@ -59,7 +59,6 @@ Architecture
                         |                    |                 |
                   [Google Maps API]     [FAST2SMS]     [Expo Push (FCM)]
 
-(Replace with an actual diagram image once you have one — /docs/architecture.png)
 
 Data Schema (high level)
 users — profile, medical ID, emergency contacts
@@ -68,23 +67,17 @@ bookings — status, type, pickup/drop, matched ambulance
 hospitals — location, specializations, live bed counts
 sos_events — trigger location, timestamp, resolved status
 
-Full schema in /docs/schema.md
 
 # Clone the repo
-git clone https://github.com/[your-org]/[repo-name].git
-cd [repo-name]
+git clone https://github.com/aryanuks31-stack/LifeLink.git
+cd [LifeLink]
 
 # Install dependencies
 npm install
 
 # Start the Expo dev server
-npx expo start
+npx expo start. 
 
-Scan the QR code with the Expo Go app on your phone to run it live.
-
-Environment setup
-
-Create a .env file (see .env.example) with your Firebase and Google Maps API keys.
 
 Team for Life Link
 Name	Role	GitHub

@@ -28,7 +28,10 @@ LifeLink unifies four time-critical needs into one app:
 
 | Dashboard | SOS | 
 |---|---|---|
-| ![Dashboard](c:\Users\aryan\OneDrive\Pictures\Screenshots\Screenshot 2026-08-11 194800.png) | ![SOS](c:\Users\aryan\OneDrive\Pictures\Screenshots\Screenshot 2026-08-11 195326.png) | 
+| ![Dashboard](<img width="360" height="785" alt="Screenshot 2026-08-11 194800" src="https://github.com/user-attachments/assets/60ecdbd2-b618-407f-963b-46ec226893e2" />
+) |
+![SOS](<img width="371" height="797" alt="Screenshot 2026-08-11 195326" src="https://github.com/user-attachments/assets/1e42a192-706a-4ff3-a863-d196205d07cf" />
+) | 
 
 ---
 

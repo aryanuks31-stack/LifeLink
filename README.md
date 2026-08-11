@@ -81,7 +81,6 @@ Nearest hospital + live bed data fetched via REST API
 ```bash
 cd backend
 npm install
-# Add your Firebase serviceAccountKey.json to src/config/
 npm run dev
 ```
 

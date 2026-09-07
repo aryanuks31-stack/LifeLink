@@ -16,6 +16,7 @@ const AMBULANCE_COUNT = 30;
 const DRIVER_COUNT = 30;
 const MEDICINE_COUNT = 100;
 const USER_COUNT = 5;
+const BLOOD_DRIVE_COUNT = 12;
 
 const JAIPUR_AREAS = [
   'Malviya Nagar', 'Vaishali Nagar', 'C-Scheme', 'Mansarovar', 'Jagatpura',
@@ -23,6 +24,14 @@ const JAIPUR_AREAS = [
 ];
 
 const BLOOD_TYPES = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'];
+const BLOOD_DONATION_NGOS = [
+  'Indian Red Cross Society, Jaipur',
+  'Sankalp India Foundation',
+  'Lions Blood Bank Jaipur',
+  'Rotary Club of Jaipur',
+  'Jeevan Dhara Blood Bank',
+  'Thalassemia & Sickle Cell Society',
+];
 const MEDICINE_CATEGORIES = [
   'Pain Relief', 'Antibiotics', 'Cardiac', 'Diabetes', 'Respiratory',
   'Digestive', 'Vitamins & Supplements', 'Skin Care', 'First Aid', 'Allergy',
@@ -202,6 +211,42 @@ function generateAmbulanceRequests(users, ambulances, hospitals) {
   return requests;
 }
 
+function generateBloodDonationDrives() {
+  return Array.from({ length: BLOOD_DRIVE_COUNT }, () => {
+    const coords = randomNearbyCoords(CITY_CENTER);
+    const area = faker.helpers.arrayElement(JAIPUR_AREAS);
+    const ngo = faker.helpers.arrayElement(BLOOD_DONATION_NGOS);
+    const daysFromNow = faker.number.int({ min: 0, max: 30 });
+    const driveDate = Timestamp.fromDate(
+      new Date(Date.now() + daysFromNow * 24 * 60 * 60 * 1000)
+    );
+    const totalSlots = faker.number.int({ min: 30, max: 150 });
+    const status = daysFromNow === 0
+      ? faker.helpers.arrayElement(['ongoing', 'upcoming'])
+      : 'upcoming';
+
+    return {
+      id: faker.string.uuid(),
+      name: `Blood Donation Camp — ${area}`,
+      ngo,
+      organizer: ngo,
+      address: `${faker.location.buildingNumber()}, ${area}, Jaipur, Rajasthan`,
+      area,
+      lat: coords.lat,
+      lng: coords.lng,
+      phone: faker.phone.number(),
+      date: driveDate,
+      startTime: '9:00 AM',
+      endTime: '5:00 PM',
+      bloodTypesNeeded: faker.helpers.arrayElements(BLOOD_TYPES, { min: 2, max: 5 }),
+      totalSlots,
+      registeredDonors: faker.number.int({ min: 0, max: totalSlots }),
+      status,
+      description: 'Donate blood and save lives. Walk-ins welcome; bring a valid government ID.',
+    };
+  });
+}
+
 // ---------- Clear existing data ----------
 async function clearCollection(collectionName) {
   const snapshot = await db.collection(collectionName).get();
@@ -223,6 +268,7 @@ async function clearAll() {
   const collections = [
     'hospitals', 'drivers', 'ambulances', 'medicines',
     'users', 'emergencyContacts', 'sosEvents', 'ambulanceRequests',
+    'bloodDonationDrives', 'bloodDonationRegistrations',
   ];
   for (const name of collections) {
     await clearCollection(name);
@@ -258,6 +304,7 @@ async function main() {
   const emergencyContacts = generateEmergencyContacts(users);
   const sosEvents = generateSOSEvents(users, hospitals, ambulances);
   const ambulanceRequests = generateAmbulanceRequests(users, ambulances, hospitals);
+  const bloodDonationDrives = generateBloodDonationDrives();
 
   await seedCollection('hospitals', hospitals);
   await seedCollection('drivers', drivers);
@@ -267,6 +314,7 @@ async function main() {
   await seedCollection('emergencyContacts', emergencyContacts);
   await seedCollection('sosEvents', sosEvents);
   await seedCollection('ambulanceRequests', ambulanceRequests);
+  await seedCollection('bloodDonationDrives', bloodDonationDrives);
 
   console.log('\n🎉 Seed complete!');
   process.exit(0);

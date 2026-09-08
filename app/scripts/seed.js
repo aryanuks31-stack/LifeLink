@@ -51,6 +51,15 @@ const MEDICINE_NAMES = [
   'Multivitamin', 'ORS Sachets', 'Loperamide', 'Chlorpheniramine', 'Diphenhydramine',
 ];
 
+function generateMedicalDescription(medicineName) {
+  const uses = [
+    `Effective relief and management of symptoms associated with ${medicineName.toLowerCase()}.`,
+    `Prescribed for targeted treatment and ongoing care. Consult your physician for dosage instructions.`,
+    `Helps manage discomfort and supports recovery under medical supervision.`
+  ];
+  return faker.helpers.arrayElement(uses);
+}
+
 function randomNearbyCoords(center, radiusKm = 15) {
   const radiusInDegrees = radiusKm / 111;
   const angle = Math.random() * 2 * Math.PI;
@@ -124,19 +133,20 @@ function generateAmbulances(hospitals, drivers) {
 }
 
 function generateMedicines() {
-  return Array.from({ length: MEDICINE_COUNT }, () => {
+  return Array.from({ length: MEDIC_COUNT }, () => {
     const prescriptionRequired = faker.datatype.boolean({ probability: 0.35 });
+    const medicineName = faker.helpers.arrayElement(MEDICINE_NAMES);
+    
     return {
       id: faker.string.uuid(),
-      name: faker.helpers.arrayElement(MEDICINE_NAMES),
-      genericName: faker.science.chemicalElement().name,
+      name: medicineName,
+      genericName: faker.helpers.arrayElement(MEDICINE_NAMES),
       category: faker.helpers.arrayElement(MEDICINE_CATEGORIES),
-      manufacturer: faker.company.name(),
+      manufacturer: `${faker.company.name()} Pharmaceuticals`,
       price: faker.number.float({ min: 15, max: 1200, fractionDigits: 2 }),
       stock: faker.number.int({ min: 0, max: 500 }),
       prescriptionRequired,
-      description: faker.commerce.productDescription(),
-      imageUrl: faker.image.urlPicsumPhotos({ width: 300, height: 300 }),
+      description: generateMedicalDescription(medicineName),
     };
   });
 }

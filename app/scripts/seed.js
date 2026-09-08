@@ -22,7 +22,6 @@ initializeApp({
 
 const db = getFirestore();
 
-
 // ============================================================
 // CONFIG
 // ============================================================
@@ -41,7 +40,6 @@ const BLOOD_DRIVE_COUNT = 12;
 
 const DEMO_USER_ID =
   "cbab8131-96e5-4ea4-a580-c8db339ffc5f";
-
 
 // ============================================================
 // CONSTANTS
@@ -115,7 +113,6 @@ const REQUEST_STATUSES = [
   "pending",
 ];
 
-
 // ============================================================
 // HELPER FUNCTIONS
 // ============================================================
@@ -131,8 +128,7 @@ function randomNearbyCoords(
     Math.random() * 2 * Math.PI;
 
   const distance =
-    Math.random() *
-    radiusInDegrees;
+    Math.random() * radiusInDegrees;
 
   return {
     lat:
@@ -147,7 +143,6 @@ function randomNearbyCoords(
   };
 }
 
-
 function randomPastDate(
   daysBack = 60
 ) {
@@ -158,7 +153,6 @@ function randomPastDate(
   );
 }
 
-
 // ============================================================
 // HOSPITALS
 // ============================================================
@@ -166,11 +160,22 @@ function randomPastDate(
 function generateHospitals() {
   return Array.from(
     { length: HOSPITAL_COUNT },
-    () => {
-      const coords =
-        randomNearbyCoords(
-          CITY_CENTER
-        );
+    (_, i) => {
+
+      let coords;
+
+      // GUARANTEED HOSPITAL NEAR SOS DEMO USER
+      if (i === 0) {
+        coords = {
+          lat: 26.8500,
+          lng: 75.5700,
+        };
+      } else {
+        coords =
+          randomNearbyCoords(
+            CITY_CENTER
+          );
+      }
 
       const totalBeds =
         faker.number.int({
@@ -204,12 +209,13 @@ function generateHospitals() {
       return {
         id: faker.string.uuid(),
 
-        name: `${area} ${faker.helpers.arrayElement([
-          "General Hospital",
-          "Medical Center",
-          "Trauma Center",
-          "Multispecialty Hospital",
-        ])}`,
+        name:
+          `${area} ${faker.helpers.arrayElement([
+            "General Hospital",
+            "Medical Center",
+            "Trauma Center",
+            "Multispecialty Hospital",
+          ])}`,
 
         address:
           `${faker.location.buildingNumber()}, ` +
@@ -249,7 +255,6 @@ function generateHospitals() {
   );
 }
 
-
 // ============================================================
 // DRIVERS
 // ============================================================
@@ -258,6 +263,7 @@ function generateDrivers() {
   return Array.from(
     { length: DRIVER_COUNT },
     (_, i) => ({
+
       id: faker.string.uuid(),
 
       name:
@@ -277,8 +283,8 @@ function generateDrivers() {
           max: 20,
         }),
 
-      // First 10 drivers are guaranteed
-      // to be available for SOS dispatch.
+      // FIRST 10 DRIVERS ARE GUARANTEED
+      // TO BE ON-DUTY FOR SOS DISPATCH.
       status:
         i < 10
           ? "on-duty"
@@ -293,7 +299,6 @@ function generateDrivers() {
     })
   );
 }
-
 
 // ============================================================
 // AMBULANCES
@@ -314,23 +319,25 @@ function generateAmbulances(
 
       let coords;
 
-      // --------------------------------------------------------
+      // ========================================================
       // GUARANTEED SOS DEMO AMBULANCE
-      // --------------------------------------------------------
+      // ========================================================
       //
-      // The demo user location from the app is approximately:
-      //
+      // Demo user location:
       // 26.8442342, 75.564581
       //
-      // This ambulance starts very close to that location.
+      // Ambulance starts close to the demo user.
       //
 
       if (i === 0) {
+
         coords = {
           lat: 26.8500,
           lng: 75.5700,
         };
+
       } else {
+
         coords =
           randomNearbyCoords(
             {
@@ -342,6 +349,7 @@ function generateAmbulances(
       }
 
       return {
+
         id:
           faker.string.uuid(),
 
@@ -359,23 +367,28 @@ function generateAmbulances(
             max: 9999,
           })}`,
 
+        // First ambulance is ALS
+        // so it is suitable for SOS demo.
         type:
-          faker.helpers.arrayElement(
-            AMBULANCE_TYPES
-          ),
+          i === 0
+            ? "ALS"
+            : faker.helpers.arrayElement(
+                AMBULANCE_TYPES
+              ),
 
         hospitalId:
           hospital.id,
 
-        // Every ambulance gets a driver.
-        // First 10 correspond to on-duty drivers.
+        // EVERY AMBULANCE HAS A DRIVER.
+        // First 10 correspond to first 10
+        // on-duty drivers.
         driverId:
           drivers[
             i % drivers.length
           ].id,
 
-        // First 10 ambulances are guaranteed
-        // to be available.
+        // FIRST 10 AMBULANCES ARE GUARANTEED
+        // TO BE AVAILABLE.
         status:
           i < 10
             ? "available"
@@ -397,13 +410,14 @@ function generateAmbulances(
   );
 }
 
-
 // ============================================================
 // MEDICINES
 // ============================================================
 
 function generateMedicines() {
+
   const medicines = [
+
     {
       name: "Paracetamol",
       genericName: "Paracetamol",
@@ -723,11 +737,13 @@ function generateMedicines() {
       description:
         "Oral rehydration solution preparation.",
     },
+
   ];
 
   return Array.from(
     { length: MEDICINE_COUNT },
     (_, index) => {
+
       const medicine =
         medicines[
           index % medicines.length
@@ -748,15 +764,16 @@ function generateMedicines() {
   );
 }
 
-
 // ============================================================
 // USERS
 // ============================================================
 
 function generateUsers() {
+
   return Array.from(
     { length: USER_COUNT },
     () => ({
+
       id: faker.string.uuid(),
 
       name:
@@ -805,7 +822,6 @@ function generateUsers() {
   );
 }
 
-
 // ============================================================
 // EMERGENCY CONTACTS
 // ============================================================
@@ -813,9 +829,11 @@ function generateUsers() {
 function generateEmergencyContacts(
   users
 ) {
+
   const contacts = [];
 
   users.forEach((user) => {
+
     const contactCount =
       faker.number.int({
         min: 1,
@@ -827,7 +845,9 @@ function generateEmergencyContacts(
       i < contactCount;
       i++
     ) {
+
       contacts.push({
+
         id: faker.string.uuid(),
 
         userId:
@@ -854,7 +874,6 @@ function generateEmergencyContacts(
   return contacts;
 }
 
-
 // ============================================================
 // SOS EVENTS
 // ============================================================
@@ -864,9 +883,11 @@ function generateSOSEvents(
   hospitals,
   ambulances
 ) {
+
   const events = [];
 
   users.forEach((user) => {
+
     const eventCount =
       faker.number.int({
         min: 0,
@@ -878,6 +899,7 @@ function generateSOSEvents(
       i < eventCount;
       i++
     ) {
+
       const hospital =
         faker.helpers.arrayElement(
           hospitals
@@ -894,6 +916,7 @@ function generateSOSEvents(
         );
 
       events.push({
+
         id: faker.string.uuid(),
 
         userId:
@@ -928,7 +951,6 @@ function generateSOSEvents(
   return events;
 }
 
-
 // ============================================================
 // AMBULANCE REQUESTS
 // ============================================================
@@ -938,9 +960,11 @@ function generateAmbulanceRequests(
   ambulances,
   hospitals
 ) {
+
   const requests = [];
 
   users.forEach((user) => {
+
     const requestCount =
       faker.number.int({
         min: 0,
@@ -952,6 +976,7 @@ function generateAmbulanceRequests(
       i < requestCount;
       i++
     ) {
+
       const ambulance =
         faker.helpers.arrayElement(
           ambulances
@@ -968,6 +993,7 @@ function generateAmbulanceRequests(
         );
 
       requests.push({
+
         id: faker.string.uuid(),
 
         userId:
@@ -1001,8 +1027,6 @@ function generateAmbulanceRequests(
 
   return requests;
 }
-
-
 // ============================================================
 // BLOOD DONATION DRIVES
 // ============================================================
@@ -1060,6 +1084,7 @@ function generateBloodDonationDrives() {
           : "upcoming";
 
       return {
+
         id: faker.string.uuid(),
 
         name:
@@ -1120,7 +1145,6 @@ function generateBloodDonationDrives() {
   );
 }
 
-
 // ============================================================
 // CLEAR EXISTING DATA
 // ============================================================
@@ -1128,12 +1152,14 @@ function generateBloodDonationDrives() {
 async function clearCollection(
   collectionName
 ) {
+
   const snapshot =
     await db
       .collection(collectionName)
       .get();
 
   if (snapshot.empty) {
+
     console.log(
       `⚪ "${collectionName}" already empty`
     );
@@ -1151,6 +1177,7 @@ async function clearCollection(
     i < docs.length;
     i += batchSize
   ) {
+
     const batch =
       db.batch();
 
@@ -1160,9 +1187,11 @@ async function clearCollection(
         i + batchSize
       )
       .forEach((doc) => {
+
         batch.delete(
           doc.ref
         );
+
       });
 
     await batch.commit();
@@ -1173,30 +1202,46 @@ async function clearCollection(
   );
 }
 
+// ============================================================
+// CLEAR ALL COLLECTIONS
+// ============================================================
 
 async function clearAll() {
+
   const collections = [
+
     "hospitals",
+
     "drivers",
+
     "ambulances",
+
     "medicines",
+
     "users",
+
     "emergencyContacts",
+
     "sosEvents",
+
     "ambulanceRequests",
+
     "bloodDonationDrives",
+
     "bloodDonationRegistrations",
+
   ];
 
   for (
     const name of collections
   ) {
+
     await clearCollection(
       name
     );
+
   }
 }
-
 
 // ============================================================
 // WRITE TO FIRESTORE
@@ -1206,6 +1251,7 @@ async function seedCollection(
   collectionName,
   docs
 ) {
+
   const batchSize = 400;
 
   for (
@@ -1213,6 +1259,7 @@ async function seedCollection(
     i < docs.length;
     i += batchSize
   ) {
+
     const batch =
       db.batch();
 
@@ -1223,6 +1270,7 @@ async function seedCollection(
       );
 
     chunk.forEach((doc) => {
+
       const ref =
         db
           .collection(
@@ -1234,6 +1282,7 @@ async function seedCollection(
         ref,
         doc
       );
+
     });
 
     await batch.commit();
@@ -1244,12 +1293,12 @@ async function seedCollection(
   );
 }
 
-
 // ============================================================
 // MAIN
 // ============================================================
 
 async function main() {
+
   console.log(
     "🧹 Clearing old data...\n"
   );
@@ -1259,7 +1308,6 @@ async function main() {
   console.log(
     "\n🌱 Starting seed (Jaipur)...\n"
   );
-
 
   // ==========================================================
   // GENERATE DATA
@@ -1288,7 +1336,6 @@ async function main() {
       users
     );
 
-
   // ==========================================================
   // ENSURE DEMO USER EXISTS
   // ==========================================================
@@ -1303,6 +1350,7 @@ async function main() {
   if (!demoUserExists) {
 
     users.push({
+
       id:
         DEMO_USER_ID,
 
@@ -1326,10 +1374,11 @@ async function main() {
 
       createdAt:
         FieldValue.serverTimestamp(),
+
     });
 
-
     emergencyContacts.push(
+
       {
         id:
           faker.string.uuid(),
@@ -1363,6 +1412,7 @@ async function main() {
         relation:
           "Sibling",
       }
+
     );
 
   } else {
@@ -1377,6 +1427,7 @@ async function main() {
     if (!hasContacts) {
 
       emergencyContacts.push({
+
         id:
           faker.string.uuid(),
 
@@ -1391,10 +1442,11 @@ async function main() {
 
         relation:
           "Parent",
+
       });
+
     }
   }
-
 
   // ==========================================================
   // OTHER DATA
@@ -1416,7 +1468,6 @@ async function main() {
 
   const bloodDonationDrives =
     generateBloodDonationDrives();
-
 
   // ==========================================================
   // SEED FIRESTORE
@@ -1467,7 +1518,6 @@ async function main() {
     bloodDonationDrives
   );
 
-
   console.log(
     "\n🎉 Seed complete!"
   );
@@ -1483,16 +1533,17 @@ async function main() {
   process.exit(0);
 }
 
-
 // ============================================================
 // ERROR HANDLING
 // ============================================================
 
 main().catch((err) => {
+
   console.error(
     "❌ Seed failed:",
     err
   );
 
   process.exit(1);
+
 });

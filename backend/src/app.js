@@ -8,7 +8,6 @@ const app = express();
 // -------------------------
 
 app.use(cors());
-
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -20,26 +19,17 @@ const sosRoutes = require("./routes/sosRoutes");
 const hospitalRoutes = require("./routes/hospitalRoutes");
 const medicineRoutes = require("./routes/medicineRoutes");
 
-// -------------------------
-// SOS Routes
-// -------------------------
-
+// SOS
 app.use("/api/sos", sosRoutes);
 
-// -------------------------
-// Hospital Routes
-// -------------------------
-
+// Hospitals
 app.use("/api/hospitals", hospitalRoutes);
 
-// -------------------------
-// Medicine Routes
-// -------------------------
-
+// Medicines
 app.use("/api/medicines", medicineRoutes);
 
 // -------------------------
-// Health Check
+// Health check
 // -------------------------
 
 app.get("/", (req, res) => {
@@ -50,7 +40,7 @@ app.get("/", (req, res) => {
 });
 
 // -------------------------
-// 404 Handler
+// 404
 // -------------------------
 
 app.use((req, res) => {
@@ -61,7 +51,7 @@ app.use((req, res) => {
 });
 
 // -------------------------
-// Error Handler
+// Error handler
 // -------------------------
 
 app.use((err, req, res, next) => {

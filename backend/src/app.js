@@ -19,7 +19,6 @@ app.use(express.urlencoded({ extended: true }));
 const sosRoutes = require("./routes/sosRoutes");
 const hospitalRoutes = require("./routes/hospitalRoutes");
 const medicineRoutes = require("./routes/medicineRoutes");
-const userRoutes = require("./routes/userRoutes");
 
 // SOS
 app.use("/api/sos", sosRoutes);
@@ -29,9 +28,6 @@ app.use("/api/hospitals", hospitalRoutes);
 
 // Medicines
 app.use("/api/medicines", medicineRoutes);
-
-// Users
-app.use("/api/users", userRoutes);
 
 // -------------------------
 // Health check

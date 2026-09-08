@@ -139,9 +139,6 @@ export default function IndexScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.headerRow}>
         <Text style={styles.title}>LifeLink</Text>
-        <Pressable style={styles.profileButton} onPress={() => router.push('/')}>
-          <Ionicons name="person-circle-outline" size={28} color="#333" />
-        </Pressable>
       </View>
 
       <View style={[styles.sosContainer, { width: windowW - 32 }]}>
@@ -191,7 +188,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff', paddingHorizontal: 16 },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },
   title: { fontSize: 22, fontWeight: '700', color: '#111' },
-  profileButton: { padding: 6, borderRadius: 20 },
+
 
   sosContainer: {
     marginTop: 16,

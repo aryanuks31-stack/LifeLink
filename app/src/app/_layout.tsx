@@ -32,9 +32,6 @@ export default function RootLayout() {
               case 'medicines':
                 name = 'medkit-outline';
                 break;
-              case 'blood-donation':
-                name = 'heart-outline';
-                break;
               default:
                 name = 'ellipse-outline';
             }
@@ -48,7 +45,6 @@ export default function RootLayout() {
         <Tabs.Screen name="sos" options={{ title: 'SOS' }} />
         <Tabs.Screen name="beds" options={{ title: 'Hospitals' }} />
         <Tabs.Screen name="medicines" options={{ title: 'Medicines' }} />
-        <Tabs.Screen name="blood-donation" options={{ title: 'Blood' }} />
         {/* Detail route — hidden from the tab bar, reachable via navigation */}
         <Tabs.Screen name="hospital-detail" options={{ href: null }} />
       </Tabs>

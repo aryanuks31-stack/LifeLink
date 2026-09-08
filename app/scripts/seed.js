@@ -302,6 +302,53 @@ async function main() {
   const medicines = generateMedicines();
   const users = generateUsers();
   const emergencyContacts = generateEmergencyContacts(users);
+
+  // Ensure the demo user used by the app screens exists with emergency contacts.
+  // The app hardcodes DEMO_USER_ID = 'cbab8131-96e5-4ea4-a580-c8db339ffc5f'.
+  const DEMO_USER_ID = 'cbab8131-96e5-4ea4-a580-c8db339ffc5f';
+  const demoUserExists = users.some((u) => u.id === DEMO_USER_ID);
+  if (!demoUserExists) {
+    users.push({
+      id: DEMO_USER_ID,
+      name: 'Demo User',
+      phone: '9999999999',
+      email: 'demo@lifelink.local',
+      bloodType: 'O+',
+      dateOfBirth: '1995-01-01',
+      allergies: [],
+      createdAt: FieldValue.serverTimestamp(),
+    });
+    emergencyContacts.push(
+      ...[
+        {
+          id: faker.string.uuid(),
+          userId: DEMO_USER_ID,
+          name: 'Emergency Contact 1',
+          phone: '9876543210',
+          relation: 'Parent',
+        },
+        {
+          id: faker.string.uuid(),
+          userId: DEMO_USER_ID,
+          name: 'Emergency Contact 2',
+          phone: '9876543211',
+          relation: 'Sibling',
+        },
+      ]
+    );
+  } else {
+    // Demo user exists but may have no contacts — always ensure at least one.
+    const hasContacts = emergencyContacts.some((c) => c.userId === DEMO_USER_ID);
+    if (!hasContacts) {
+      emergencyContacts.push({
+        id: faker.string.uuid(),
+        userId: DEMO_USER_ID,
+        name: 'Emergency Contact 1',
+        phone: '9876543210',
+        relation: 'Parent',
+      });
+    }
+  }
   const sosEvents = generateSOSEvents(users, hospitals, ambulances);
   const ambulanceRequests = generateAmbulanceRequests(users, ambulances, hospitals);
   const bloodDonationDrives = generateBloodDonationDrives();

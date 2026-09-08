@@ -1,4 +1,5 @@
 const db = require("../config/firebase");
+const { FieldValue } = require("firebase-admin/firestore");
 
 const getMedicines = async (req, res) => {
   try {
@@ -72,6 +73,13 @@ const createOrder = async (req, res) => {
         quantity: item.quantity,
         price: med.price,
         lineTotal,
+      });
+    }
+
+    // Decrement stock for each ordered item
+    for (const item of items) {
+      await db.collection("medicines").doc(item.medicineId).update({
+        stock: FieldValue.increment(-item.quantity),
       });
     }
 

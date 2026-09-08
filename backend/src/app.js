@@ -20,17 +20,26 @@ const sosRoutes = require("./routes/sosRoutes");
 const hospitalRoutes = require("./routes/hospitalRoutes");
 const medicineRoutes = require("./routes/medicineRoutes");
 
-// SOS
+// -------------------------
+// SOS Routes
+// -------------------------
+
 app.use("/api/sos", sosRoutes);
 
-// Hospitals
+// -------------------------
+// Hospital Routes
+// -------------------------
+
 app.use("/api/hospitals", hospitalRoutes);
 
-// Medicines
+// -------------------------
+// Medicine Routes
+// -------------------------
+
 app.use("/api/medicines", medicineRoutes);
 
 // -------------------------
-// Health check
+// Health Check
 // -------------------------
 
 app.get("/", (req, res) => {
@@ -41,7 +50,7 @@ app.get("/", (req, res) => {
 });
 
 // -------------------------
-// 404 handler
+// 404 Handler
 // -------------------------
 
 app.use((req, res) => {
@@ -52,7 +61,7 @@ app.use((req, res) => {
 });
 
 // -------------------------
-// Error handler
+// Error Handler
 // -------------------------
 
 app.use((err, req, res, next) => {

@@ -31,6 +31,19 @@ const CITY_CENTER = {
   lng: 75.7873,
 };
 
+// DEMO USER LOCATION FROM THE APP
+const DEMO_USER_LOCATION = {
+  lat: 26.8442342,
+  lng: 75.564581,
+};
+
+// GUARANTEED SOS LOCATION
+// This is close to the demo user.
+const SOS_AMBULANCE_LOCATION = {
+  lat: 26.8500,
+  lng: 75.5700,
+};
+
 const HOSPITAL_COUNT = 10;
 const AMBULANCE_COUNT = 30;
 const DRIVER_COUNT = 30;
@@ -128,7 +141,8 @@ function randomNearbyCoords(
     Math.random() * 2 * Math.PI;
 
   const distance =
-    Math.random() * radiusInDegrees;
+    Math.random() *
+    radiusInDegrees;
 
   return {
     lat:
@@ -158,23 +172,28 @@ function randomPastDate(
 // ============================================================
 
 function generateHospitals() {
+
   return Array.from(
     { length: HOSPITAL_COUNT },
     (_, i) => {
 
       let coords;
 
-      // GUARANTEED HOSPITAL NEAR SOS DEMO USER
+      // FIRST HOSPITAL IS GUARANTEED
+      // TO BE NEAR THE DEMO USER.
       if (i === 0) {
+
         coords = {
-          lat: 26.8500,
-          lng: 75.5700,
+          ...SOS_AMBULANCE_LOCATION,
         };
+
       } else {
+
         coords =
           randomNearbyCoords(
             CITY_CENTER
           );
+
       }
 
       const totalBeds =
@@ -207,7 +226,9 @@ function generateHospitals() {
         );
 
       return {
-        id: faker.string.uuid(),
+
+        id:
+          faker.string.uuid(),
 
         name:
           `${area} ${faker.helpers.arrayElement([
@@ -224,8 +245,11 @@ function generateHospitals() {
             "3020##"
           )}`,
 
-        lat: coords.lat,
-        lng: coords.lng,
+        lat:
+          coords.lat,
+
+        lng:
+          coords.lng,
 
         phone:
           faker.phone.number(),
@@ -260,11 +284,13 @@ function generateHospitals() {
 // ============================================================
 
 function generateDrivers() {
+
   return Array.from(
     { length: DRIVER_COUNT },
     (_, i) => ({
 
-      id: faker.string.uuid(),
+      id:
+        faker.string.uuid(),
 
       name:
         faker.person.fullName(),
@@ -283,8 +309,8 @@ function generateDrivers() {
           max: 20,
         }),
 
-      // FIRST 10 DRIVERS ARE GUARANTEED
-      // TO BE ON-DUTY FOR SOS DISPATCH.
+      // FIRST 10 DRIVERS ARE ON-DUTY.
+      // THIS IS REQUIRED FOR SOS DISPATCH.
       status:
         i < 10
           ? "on-duty"
@@ -308,41 +334,43 @@ function generateAmbulances(
   hospitals,
   drivers
 ) {
+
   return Array.from(
     { length: AMBULANCE_COUNT },
     (_, i) => {
 
-      const hospital =
-        faker.helpers.arrayElement(
-          hospitals
-        );
-
       let coords;
 
+      let hospital;
+
       // ========================================================
-      // GUARANTEED SOS DEMO AMBULANCE
+      // FIRST AMBULANCE = SOS DEMO AMBULANCE
       // ========================================================
-      //
-      // Demo user location:
-      // 26.8442342, 75.564581
-      //
-      // Ambulance starts close to the demo user.
-      //
 
       if (i === 0) {
 
         coords = {
-          lat: 26.8500,
-          lng: 75.5700,
+          ...SOS_AMBULANCE_LOCATION,
         };
 
+        hospital =
+          hospitals[0];
+
       } else {
+
+        hospital =
+          faker.helpers.arrayElement(
+            hospitals
+          );
 
         coords =
           randomNearbyCoords(
             {
-              lat: hospital.lat,
-              lng: hospital.lng,
+              lat:
+                hospital.lat,
+
+              lng:
+                hospital.lng,
             },
             5
           );
@@ -367,8 +395,7 @@ function generateAmbulances(
             max: 9999,
           })}`,
 
-        // First ambulance is ALS
-        // so it is suitable for SOS demo.
+        // FIRST AMBULANCE IS ALS.
         type:
           i === 0
             ? "ALS"
@@ -380,15 +407,14 @@ function generateAmbulances(
           hospital.id,
 
         // EVERY AMBULANCE HAS A DRIVER.
-        // First 10 correspond to first 10
-        // on-duty drivers.
+        // FIRST 10 MATCH FIRST 10 ON-DUTY DRIVERS.
         driverId:
           drivers[
             i % drivers.length
           ].id,
 
-        // FIRST 10 AMBULANCES ARE GUARANTEED
-        // TO BE AVAILABLE.
+        // FIRST 10 ARE AVAILABLE.
+        // THIS GUARANTEES SOS DISPATCH.
         status:
           i < 10
             ? "available"
@@ -750,7 +776,9 @@ function generateMedicines() {
         ];
 
       return {
-        id: faker.string.uuid(),
+
+        id:
+          faker.string.uuid(),
 
         ...medicine,
 
@@ -774,7 +802,8 @@ function generateUsers() {
     { length: USER_COUNT },
     () => ({
 
-      id: faker.string.uuid(),
+      id:
+        faker.string.uuid(),
 
       name:
         faker.person.fullName(),
@@ -848,7 +877,8 @@ function generateEmergencyContacts(
 
       contacts.push({
 
-        id: faker.string.uuid(),
+        id:
+          faker.string.uuid(),
 
         userId:
           user.id,
@@ -917,7 +947,8 @@ function generateSOSEvents(
 
       events.push({
 
-        id: faker.string.uuid(),
+        id:
+          faker.string.uuid(),
 
         userId:
           user.id,
@@ -994,7 +1025,8 @@ function generateAmbulanceRequests(
 
       requests.push({
 
-        id: faker.string.uuid(),
+        id:
+          faker.string.uuid(),
 
         userId:
           user.id,
@@ -1027,11 +1059,13 @@ function generateAmbulanceRequests(
 
   return requests;
 }
+
 // ============================================================
 // BLOOD DONATION DRIVES
 // ============================================================
 
 function generateBloodDonationDrives() {
+
   return Array.from(
     { length: BLOOD_DRIVE_COUNT },
     () => {
@@ -1085,7 +1119,8 @@ function generateBloodDonationDrives() {
 
       return {
 
-        id: faker.string.uuid(),
+        id:
+          faker.string.uuid(),
 
         name:
           `Blood Donation Camp — ${area}`,
@@ -1146,7 +1181,7 @@ function generateBloodDonationDrives() {
 }
 
 // ============================================================
-// CLEAR EXISTING DATA
+// CLEAR COLLECTION
 // ============================================================
 
 async function clearCollection(
@@ -1203,7 +1238,7 @@ async function clearCollection(
 }
 
 // ============================================================
-// CLEAR ALL COLLECTIONS
+// CLEAR ALL
 // ============================================================
 
 async function clearAll() {
@@ -1244,7 +1279,7 @@ async function clearAll() {
 }
 
 // ============================================================
-// WRITE TO FIRESTORE
+// SEED COLLECTION
 // ============================================================
 
 async function seedCollection(
@@ -1337,7 +1372,7 @@ async function main() {
     );
 
   // ==========================================================
-  // ENSURE DEMO USER EXISTS
+  // ENSURE DEMO USER
   // ==========================================================
 
   const demoUserExists =
@@ -1374,7 +1409,6 @@ async function main() {
 
       createdAt:
         FieldValue.serverTimestamp(),
-
     });
 
     emergencyContacts.push(
@@ -1442,9 +1476,7 @@ async function main() {
 
         relation:
           "Parent",
-
       });
-
     }
   }
 
@@ -1470,7 +1502,7 @@ async function main() {
     generateBloodDonationDrives();
 
   // ==========================================================
-  // SEED FIRESTORE
+  // WRITE TO FIRESTORE
   // ==========================================================
 
   await seedCollection(
@@ -1518,8 +1550,51 @@ async function main() {
     bloodDonationDrives
   );
 
+  // ==========================================================
+  // FINAL VERIFICATION
+  // ==========================================================
+
+  console.log("\n=================================");
+  console.log("SOS DEMO VERIFICATION");
+  console.log("=================================");
+
   console.log(
-    "\n🎉 Seed complete!"
+    "Demo user:",
+    DEMO_USER_LOCATION
+  );
+
+  console.log(
+    "SOS ambulance:",
+    SOS_AMBULANCE_LOCATION
+  );
+
+  console.log(
+    "First ambulance status:",
+    ambulances[0].status
+  );
+
+  console.log(
+    "First ambulance driver:",
+    ambulances[0].driverId
+  );
+
+  console.log(
+    "First driver status:",
+    drivers[0].status
+  );
+
+  console.log(
+    "First hospital:",
+    hospitals[0].lat,
+    hospitals[0].lng
+  );
+
+  console.log(
+    "=================================\n"
+  );
+
+  console.log(
+    "🎉 Seed complete!"
   );
 
   console.log(
@@ -1528,6 +1603,10 @@ async function main() {
 
   console.log(
     "👨‍✈️ SOS demo driver is guaranteed to be on-duty."
+  );
+
+  console.log(
+    "📍 SOS ambulance is guaranteed to be within 10 km of demo user."
   );
 
   process.exit(0);

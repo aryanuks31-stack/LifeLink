@@ -49,6 +49,8 @@ export default function RootLayout() {
         <Tabs.Screen name="beds" options={{ title: 'Hospitals' }} />
         <Tabs.Screen name="medicines" options={{ title: 'Medicines' }} />
         <Tabs.Screen name="blood-donation" options={{ title: 'Blood' }} />
+        {/* Detail route — hidden from the tab bar, reachable via navigation */}
+        <Tabs.Screen name="hospital-detail" options={{ href: null }} />
       </Tabs>
     </SafeAreaProvider>
   );

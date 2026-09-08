@@ -13,9 +13,11 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as Location from 'expo-location';
 
 // Replace with your backend URL or import from config
 const BACKEND_URL = 'http://10.0.2.2:5000';
+const DEMO_USER_ID = 'cbab8131-96e5-4ea4-a580-c8db339ffc5f'; // demo user — same as sos.tsx
 
 type Hospital = {
   id: string;
@@ -59,6 +61,35 @@ export default function IndexScreen() {
     fetchHospitals();
   }, [fetchHospitals]);
 
+  const sendSOS = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission needed', 'Location access is required to send SOS.');
+        return;
+      }
+
+      const location = await Location.getCurrentPositionAsync({});
+      const { latitude, longitude } = location.coords;
+
+      const payload = { userId: DEMO_USER_ID, lat: latitude, lng: longitude };
+      const res = await fetch(`${BACKEND_URL}/api/sos/trigger`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        Alert.alert('Error', json?.message ?? 'Failed to send SOS');
+        return;
+      }
+      Alert.alert('SOS Sent', `Contacts notified: ${json.contactsNotified ?? 0}`);
+    } catch (err) {
+      console.error('SOS network error', err);
+      Alert.alert('Network error', 'Could not reach server. Check connection.');
+    }
+  };
+
   const triggerSOS = async () => {
     Alert.alert(
       'Trigger SOS',
@@ -68,26 +99,7 @@ export default function IndexScreen() {
         {
           text: 'Send',
           style: 'destructive',
-          onPress: async () => {
-            try {
-              // TODO: replace userId and capture real GPS using expo-location in your app.
-              const payload = { userId: 'REPLACE_WITH_REAL_USER_ID', lat: 26.9, lng: 75.8 };
-              const res = await fetch(`${BACKEND_URL}/api/sos/trigger`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
-              });
-              const json = await res.json();
-              if (!res.ok) {
-                Alert.alert('Error', json?.message ?? 'Failed to send SOS');
-                return;
-              }
-              Alert.alert('SOS Sent', `Contacts notified: ${json.contactsNotified ?? 0}`);
-            } catch (err) {
-              console.error('SOS network error', err);
-              Alert.alert('Network error', 'Could not reach server. Check connection.');
-            }
-          },
+          onPress: sendSOS,
         },
       ],
     );

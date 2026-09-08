@@ -1,3 +1,4 @@
+import { BACKEND_URL } from '../constants/api';
 import { useRef, useState } from 'react';
 import {
   StyleSheet, Text, View, Pressable, Alert, Animated,
@@ -10,7 +11,6 @@ import { Linking } from 'react-native';
 import { ScreenHeader } from '@/components/screen-header';
 import { AppColors, Spacing } from '@/constants/theme';
 
-const BACKEND_URL = 'http://172.28.56.178:5000'; // ⚠️ replace with your actual IP (hostname -I)
 const DEMO_USER_ID = 'cbab8131-96e5-4ea4-a580-c8db339ffc5f'; // real seeded user
 
 const HOLD_DURATION = 1500;
@@ -401,3 +401,4 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 });
+

@@ -1,3 +1,4 @@
+import { BACKEND_URL } from '../constants/api';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   SafeAreaView,
@@ -16,7 +17,6 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 
 // Replace with your backend URL or import from config
-const BACKEND_URL = 'http://10.0.2.2:5000';
 const DEMO_USER_ID = 'cbab8131-96e5-4ea4-a580-c8db339ffc5f'; // demo user — same as sos.tsx
 
 type Hospital = {

@@ -1,3 +1,4 @@
+import { BACKEND_URL } from '../constants/api';
 // app/src/app/medicines.tsx
 import React, { useEffect, useState, useCallback } from "react";
 import {
@@ -14,7 +15,6 @@ import { AppColors } from "../constants/theme";
 import { ScreenHeader } from "../components/screen-header";
 
 // ⚠️ Emulator alias for host machine: 10.0.2.2. Use your LAN IP (hostname -I) on a physical phone.
-const BACKEND_URL = "http://10.0.2.2:5000";
 const DEMO_USER_ID = "cbab8131-96e5-4ea4-a580-c8db339ffc5f"; // demo user — same as sos.tsx / index.tsx
 
 interface Medicine {
@@ -274,3 +274,4 @@ const styles = StyleSheet.create({
   },
   checkoutText: { color: "#fff", fontWeight: "700" },
 });
+

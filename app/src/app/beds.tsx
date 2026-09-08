@@ -1,3 +1,4 @@
+import { BACKEND_URL } from '../constants/api';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
@@ -16,7 +17,6 @@ import { ScreenHeader } from '@/components/screen-header';
 import { AppColors, Radius, Spacing } from '@/constants/theme';
 
 // ⚠️ Replace with your laptop's local IP when testing on a physical phone (same as sos.tsx)
-const BACKEND_URL = 'http://10.0.2.2:5000';
 
 type Hospital = {
   id: string;
@@ -313,3 +313,4 @@ const styles = StyleSheet.create({
   },
   traumaText: { color: AppColors.emergency, fontSize: 11, fontWeight: '700' },
 });
+

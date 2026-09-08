@@ -1,5 +1,26 @@
+# Dependencies
 node_modules/
+
+# Environment variables
 .env
+.env.*
+!.env.example
+
+# Firebase credentials
 serviceAccountKey.json
-*:Zone.Identifier
+backend/src/config/serviceAccountKey.json
+
+# Logs
 *.log
+
+# Test files
+test-*.json
+
+# Local backups
+*.backup.js
+*.before-reservation.js
+
+# OS files
+.DS_Store
+Thumbs.db
+*:Zone.Identifier

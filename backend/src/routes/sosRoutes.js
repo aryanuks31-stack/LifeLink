@@ -7,19 +7,10 @@ const {
   getSOSStatus,
 } = require("../controllers/sosController");
 
-
 // Trigger a new SOS
-router.post(
-  "/trigger",
-  triggerSOS
-);
+router.post("/trigger", triggerSOS);
 
-
-// Get live ambulance position
-router.get(
-  "/:sosEventId/status",
-  getSOSStatus
-);
-
+// Get live ambulance tracking status
+router.get("/:sosEventId/status", getSOSStatus);
 
 module.exports = router;

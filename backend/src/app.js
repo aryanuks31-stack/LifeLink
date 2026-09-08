@@ -1,111 +1,71 @@
 const express = require("express");
 const cors = require("cors");
 
-const hospitalRoutes = require("./routes/hospitalRoutes");
-const sosRoutes = require("./routes/sosRoutes");
-const medicineRoutes = require("./routes/medicineRoutes");
-const ambulanceRoutes = require("./routes/ambulanceRoutes");
-
 const app = express();
 
-// --------------------------------------------------
-// CORS
-// --------------------------------------------------
+// -------------------------
+// Middleware
+// -------------------------
 
-const corsOrigin = process.env.CORS_ORIGIN || "*";
+app.use(cors());
 
-app.use(
-  cors({
-    origin: corsOrigin,
-  })
-);
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// --------------------------------------------------
-// Request parsing
-// --------------------------------------------------
+// -------------------------
+// Routes
+// -------------------------
 
-app.use(
-  express.json({
-    limit: "1mb",
-  })
-);
+const sosRoutes = require("./routes/sosRoutes");
+const hospitalRoutes = require("./routes/hospitalRoutes");
+const medicineRoutes = require("./routes/medicineRoutes");
+const userRoutes = require("./routes/userRoutes");
 
-// --------------------------------------------------
-// Health / status
-// --------------------------------------------------
+// SOS
+app.use("/api/sos", sosRoutes);
+
+// Hospitals
+app.use("/api/hospitals", hospitalRoutes);
+
+// Medicines
+app.use("/api/medicines", medicineRoutes);
+
+// Users
+app.use("/api/users", userRoutes);
+
+// -------------------------
+// Health check
+// -------------------------
 
 app.get("/", (req, res) => {
-  return res.status(200).json({
-    status: "LifeLink Backend Running",
+  res.json({
+    success: true,
+    message: "LifeLink backend is running",
   });
 });
 
-app.get("/health", (req, res) => {
-  return res.status(200).json({
-    status: "ok",
-    service: "lifelink-backend",
-  });
-});
-
-// --------------------------------------------------
-// API routes
-// --------------------------------------------------
-
-app.use(
-  "/api/hospitals",
-  hospitalRoutes
-);
-
-app.use(
-  "/api/sos",
-  sosRoutes
-);
-
-app.use(
-  "/api/medicines",
-  medicineRoutes
-);
-
-app.use(
-  "/api/ambulances",
-  ambulanceRoutes
-);
-
-// --------------------------------------------------
+// -------------------------
 // 404 handler
-// --------------------------------------------------
+// -------------------------
 
 app.use((req, res) => {
-  return res.status(404).json({
-    message: "Route not found",
-    path: req.originalUrl,
+  res.status(404).json({
+    success: false,
+    message: `Route not found: ${req.method} ${req.originalUrl}`,
   });
 });
 
-// --------------------------------------------------
-// Global error handler
-// --------------------------------------------------
+// -------------------------
+// Error handler
+// -------------------------
 
 app.use((err, req, res, next) => {
-  console.error(
-    "Unhandled server error:",
-    err
-  );
+  console.error("Server error:", err);
 
-  const statusCode =
-    Number.isInteger(err.status) &&
-    err.status >= 400 &&
-    err.status < 600
-      ? err.status
-      : 500;
-
-  return res.status(statusCode).json({
-    message:
-      statusCode !== 500 && err.message
-        ? err.message
-        : "Internal server error",
+  res.status(500).json({
+    success: false,
+    message: "Internal server error",
   });
 });
 
 module.exports = app;
-

@@ -139,7 +139,7 @@ export default function IndexScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.headerRow}>
         <Text style={styles.title}>LifeLink</Text>
-        <Pressable style={styles.profileButton} onPress={() => router.push('/profile')}>
+        <Pressable style={styles.profileButton} onPress={() => router.push('/')}>
           <Ionicons name="person-circle-outline" size={28} color="#333" />
         </Pressable>
       </View>

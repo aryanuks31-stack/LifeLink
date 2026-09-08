@@ -55,14 +55,14 @@ export default function SOSScreen() {
     setProgress(0);
 
     const start = Date.now();
-    intervalRef.current = global.setInterval(() => {
+    intervalRef.current = setInterval(() => {
       const elapsed = Date.now() - start;
       const p = Math.min(1, elapsed / HOLD_MS);
       progressRef.current = p;
       setProgress(p);
     }, 16);
 
-    timerRef.current = global.setTimeout(() => {
+    timerRef.current = setTimeout(() => {
       completeHold();
     }, HOLD_MS);
   };
@@ -128,7 +128,7 @@ export default function SOSScreen() {
       <View style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Emergency</Text>
-          <Pressable onPress={() => router.push('/profile')}>
+          <Pressable onPress={() => router.push('/')}>
             <Ionicons name="person-circle-outline" size={26} color="#e6e6e6" />
           </Pressable>
         </View>

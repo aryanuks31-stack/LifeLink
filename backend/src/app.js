@@ -1,5 +1,7 @@
+
 const express = require("express");
 const cors = require("cors");
+
 const hospitalRoutes = require("./routes/hospitalRoutes");
 const sosRoutes = require("./routes/sosRoutes");
 const medicineRoutes = require("./routes/medicineRoutes");
@@ -24,3 +26,4 @@ app.use("/api/blood-donations", bloodDonationRoutes);
 app.use("/api/ambulances", ambulanceRoutes);
 
 module.exports = app;
+

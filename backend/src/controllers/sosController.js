@@ -1,5 +1,9 @@
 const db = require("../config/firebase");
 
+// ========================================
+// CONFIGURATION
+// ========================================
+
 const AMBULANCE_SEARCH_RADIUS_KM = 10;
 const AMBULANCE_SPEED_KMH = 35;
 const HOSPITAL_SPEED_KMH = 35;
@@ -7,9 +11,11 @@ const HOSPITAL_SPEED_KMH = 35;
 const MIN_ETA_SECONDS = 120;
 const MAX_ETA_SECONDS = 3600;
 
-/**
- * Validate a coordinate.
- */
+
+// ========================================
+// VALIDATE COORDINATE
+// ========================================
+
 function isValidCoordinate(value, min, max) {
   const number = Number(value);
 
@@ -20,12 +26,17 @@ function isValidCoordinate(value, min, max) {
   );
 }
 
-/**
- * Calculate Haversine distance between two coordinates.
- *
- * Returns distance in meters.
- */
-function haversineMeters(lat1, lng1, lat2, lng2) {
+
+// ========================================
+// HAVERSINE DISTANCE
+// ========================================
+
+function haversineMeters(
+  lat1,
+  lng1,
+  lat2,
+  lng2
+) {
   const toRad = (degrees) =>
     (degrees * Math.PI) / 180;
 
@@ -50,9 +61,11 @@ function haversineMeters(lat1, lng1, lat2, lng2) {
   );
 }
 
-/**
- * Convert ETA seconds into a human-readable string.
- */
+
+// ========================================
+// FORMAT ETA
+// ========================================
+
 function formatEta(seconds) {
   const safeSeconds = Math.max(
     0,
@@ -80,21 +93,20 @@ function formatEta(seconds) {
   return `${minutes} min ${remainingSeconds}s`;
 }
 
-/**
- * Find the nearest hospital and nearest available
- * ambulance with an available on-duty driver.
- *
- * The ambulance reservation is performed inside a
- * Firestore transaction so two simultaneous SOS
- * requests cannot reserve the same ambulance.
- */
+
+// ========================================
+// ASSIGN AMBULANCE
+// ========================================
+
 async function assignAmbulance(lat, lng) {
   const [
     hospitalsSnap,
     ambulancesSnap,
     driversSnap,
   ] = await Promise.all([
-    db.collection("hospitals").get(),
+    db
+      .collection("hospitals")
+      .get(),
 
     db
       .collection("ambulances")
@@ -133,15 +145,21 @@ async function assignAmbulance(lat, lng) {
       ...doc.data(),
     }));
 
+
+  // ========================================
+  // CHECK HOSPITALS
+  // ========================================
+
   if (hospitals.length === 0) {
     throw new Error(
       "No hospitals available"
     );
   }
 
-  // ----------------------------------------
-  // Find nearest hospital
-  // ----------------------------------------
+
+  // ========================================
+  // FIND NEAREST HOSPITAL
+  // ========================================
 
   let nearestHospital = null;
   let nearestHospitalDist = Infinity;
@@ -162,19 +180,23 @@ async function assignAmbulance(lat, lng) {
       continue;
     }
 
-    const distance = haversineMeters(
-      lat,
-      lng,
-      Number(hospital.lat),
-      Number(hospital.lng)
-    );
+    const distance =
+      haversineMeters(
+        lat,
+        lng,
+        Number(hospital.lat),
+        Number(hospital.lng)
+      );
 
     if (
       distance <
       nearestHospitalDist
     ) {
-      nearestHospitalDist = distance;
-      nearestHospital = hospital;
+      nearestHospitalDist =
+        distance;
+
+      nearestHospital =
+        hospital;
     }
   }
 
@@ -184,9 +206,10 @@ async function assignAmbulance(lat, lng) {
     );
   }
 
-  // ----------------------------------------
-  // Find nearest available ambulance
-  // ----------------------------------------
+
+  // ========================================
+  // FIND NEAREST AVAILABLE AMBULANCE
+  // ========================================
 
   let nearestAmbulance = null;
   let nearestAmbulanceDist = Infinity;
@@ -207,12 +230,13 @@ async function assignAmbulance(lat, lng) {
       continue;
     }
 
-    const distance = haversineMeters(
-      lat,
-      lng,
-      Number(ambulance.currentLat),
-      Number(ambulance.currentLng)
-    );
+    const distance =
+      haversineMeters(
+        lat,
+        lng,
+        Number(ambulance.currentLat),
+        Number(ambulance.currentLng)
+      );
 
     const distanceKm =
       distance / 1000;
@@ -223,14 +247,18 @@ async function assignAmbulance(lat, lng) {
       distance <
         nearestAmbulanceDist
     ) {
-      nearestAmbulance = ambulance;
-      nearestAmbulanceDist = distance;
+      nearestAmbulance =
+        ambulance;
+
+      nearestAmbulanceDist =
+        distance;
     }
   }
 
-  // ----------------------------------------
-  // Find the ambulance's assigned driver
-  // ----------------------------------------
+
+  // ========================================
+  // FIND ASSIGNED DRIVER
+  // ========================================
 
   let chosenDriver = null;
 
@@ -245,27 +273,34 @@ async function assignAmbulance(lat, lng) {
       ) || null;
   }
 
-  /*
-   * Do not dispatch an ambulance if its
-   * assigned driver isn't currently on-duty.
-   */
+
+  // ========================================
+  // REQUIRE DRIVER
+  // ========================================
+
   if (
     !nearestAmbulance ||
     !chosenDriver
   ) {
     nearestAmbulance = null;
-    nearestAmbulanceDist = Infinity;
+    nearestAmbulanceDist =
+      Infinity;
+
     chosenDriver = null;
   }
 
-  // ----------------------------------------
-  // Atomically reserve ambulance
-  // ----------------------------------------
+
+  // ========================================
+  // RESERVE AMBULANCE
+  // ========================================
 
   if (nearestAmbulance) {
-    const ambulanceRef = db
-      .collection("ambulances")
-      .doc(nearestAmbulance.id);
+    const ambulanceRef =
+      db
+        .collection("ambulances")
+        .doc(
+          nearestAmbulance.id
+        );
 
     const reserved =
       await db.runTransaction(
@@ -275,17 +310,16 @@ async function assignAmbulance(lat, lng) {
               ambulanceRef
             );
 
-          if (!ambulanceDoc.exists) {
+          if (
+            !ambulanceDoc.exists
+          ) {
             return false;
           }
 
           const currentAmbulance =
             ambulanceDoc.data();
 
-          /*
-           * Critical concurrency check:
-           * the ambulance must still be available.
-           */
+          // Make sure it is still available
           if (
             currentAmbulance.status !==
             "available"
@@ -312,19 +346,17 @@ async function assignAmbulance(lat, lng) {
       );
     }
 
-    /*
-     * Update the local object so the SOS
-     * response reflects the new state.
-     */
+    // Update local object
     nearestAmbulance = {
       ...nearestAmbulance,
       status: "enroute",
     };
   }
 
-  // ----------------------------------------
-  // Calculate ETA
-  // ----------------------------------------
+
+  // ========================================
+  // CALCULATE ETA
+  // ========================================
 
   const ambulanceToUserKm =
     nearestAmbulance
@@ -350,13 +382,19 @@ async function assignAmbulance(lat, lng) {
       ) * 3600
     );
 
-  const etaSeconds = Math.max(
-    MIN_ETA_SECONDS,
-    Math.min(
-      totalEtaSeconds,
-      MAX_ETA_SECONDS
-    )
-  );
+  const etaSeconds =
+    Math.max(
+      MIN_ETA_SECONDS,
+      Math.min(
+        totalEtaSeconds,
+        MAX_ETA_SECONDS
+      )
+    );
+
+
+  // ========================================
+  // RETURN DISPATCH
+  // ========================================
 
   return {
     ambulance:
@@ -371,7 +409,9 @@ async function assignAmbulance(lat, lng) {
     etaSeconds,
 
     etaDisplay:
-      formatEta(etaSeconds),
+      formatEta(
+        etaSeconds
+      ),
 
     distanceToHospitalMeters:
       Math.round(
@@ -380,11 +420,12 @@ async function assignAmbulance(lat, lng) {
   };
 }
 
-/**
- * POST /api/sos/trigger
- *
- * Trigger an SOS emergency event.
- */
+
+// ========================================
+// TRIGGER SOS
+// POST /api/sos/trigger
+// ========================================
+
 const triggerSOS = async (
   req,
   res
@@ -396,9 +437,10 @@ const triggerSOS = async (
       lng,
     } = req.body;
 
-    // ----------------------------------------
-    // Validate user ID
-    // ----------------------------------------
+
+    // ========================================
+    // VALIDATE USER ID
+    // ========================================
 
     if (
       !userId ||
@@ -414,9 +456,10 @@ const triggerSOS = async (
     const cleanUserId =
       userId.trim();
 
-    // ----------------------------------------
-    // Validate latitude
-    // ----------------------------------------
+
+    // ========================================
+    // VALIDATE LATITUDE
+    // ========================================
 
     if (
       !isValidCoordinate(
@@ -431,9 +474,10 @@ const triggerSOS = async (
       });
     }
 
-    // ----------------------------------------
-    // Validate longitude
-    // ----------------------------------------
+
+    // ========================================
+    // VALIDATE LONGITUDE
+    // ========================================
 
     if (
       !isValidCoordinate(
@@ -448,12 +492,16 @@ const triggerSOS = async (
       });
     }
 
-    const userLat = Number(lat);
-    const userLng = Number(lng);
+    const userLat =
+      Number(lat);
 
-    // ----------------------------------------
-    // Find emergency contacts
-    // ----------------------------------------
+    const userLng =
+      Number(lng);
+
+
+    // ========================================
+    // FIND EMERGENCY CONTACTS
+    // ========================================
 
     const contactsSnapshot =
       await db
@@ -484,9 +532,10 @@ const triggerSOS = async (
         })
       );
 
-    // ----------------------------------------
-    // Find ambulance + hospital
-    // ----------------------------------------
+
+    // ========================================
+    // FIND AMBULANCE + HOSPITAL
+    // ========================================
 
     let dispatch;
 
@@ -508,16 +557,18 @@ const triggerSOS = async (
       });
     }
 
-    // ----------------------------------------
-    // Create Google Maps location
-    // ----------------------------------------
+
+    // ========================================
+    // GOOGLE MAPS LOCATION
+    // ========================================
 
     const mapsLink =
       `https://www.google.com/maps?q=${userLat},${userLng}`;
 
-    // ----------------------------------------
-    // Build notification message
-    // ----------------------------------------
+
+    // ========================================
+    // NOTIFICATION MESSAGE
+    // ========================================
 
     const messageBody =
       `EMERGENCY ALERT: ${
@@ -528,9 +579,10 @@ const triggerSOS = async (
       `ETA: ${dispatch.etaDisplay}. ` +
       `Live location: ${mapsLink}`;
 
-    // ----------------------------------------
-    // Simulated notifications
-    // ----------------------------------------
+
+    // ========================================
+    // SIMULATED SMS
+    // ========================================
 
     const notifications =
       contacts.map(
@@ -572,9 +624,10 @@ const triggerSOS = async (
       }
     );
 
-    // ----------------------------------------
-    // Save SOS event
-    // ----------------------------------------
+
+    // ========================================
+    // SAVE SOS EVENT
+    // ========================================
 
     const sosEventRef =
       await db
@@ -602,18 +655,34 @@ const triggerSOS = async (
             notifications,
 
           ambulanceId:
-            dispatch
-              .ambulance?.id ||
+            dispatch.ambulance?.id ||
             null,
 
+          // IMPORTANT:
+          // Save the ambulance's starting
+          // position for live simulation.
+          ambulanceStartLat:
+            dispatch.ambulance
+              ? Number(
+                  dispatch.ambulance
+                    .currentLat
+                )
+              : null,
+
+          ambulanceStartLng:
+            dispatch.ambulance
+              ? Number(
+                  dispatch.ambulance
+                    .currentLng
+                )
+              : null,
+
           driverId:
-            dispatch
-              .driver?.id ||
+            dispatch.driver?.id ||
             null,
 
           hospitalId:
-            dispatch
-              .hospital?.id ||
+            dispatch.hospital?.id ||
             null,
 
           etaSeconds:
@@ -626,9 +695,10 @@ const triggerSOS = async (
             null,
         });
 
-    // ----------------------------------------
-    // Response
-    // ----------------------------------------
+
+    // ========================================
+    // RESPONSE
+    // ========================================
 
     return res.status(200).json({
       message:
@@ -647,33 +717,27 @@ const triggerSOS = async (
         dispatch.ambulance
           ? {
               id:
-                dispatch
-                  .ambulance
+                dispatch.ambulance
                   .id,
 
               vehicleNumber:
-                dispatch
-                  .ambulance
+                dispatch.ambulance
                   .vehicleNumber,
 
               type:
-                dispatch
-                  .ambulance
+                dispatch.ambulance
                   .type,
 
               currentLat:
-                dispatch
-                  .ambulance
+                dispatch.ambulance
                   .currentLat,
 
               currentLng:
-                dispatch
-                  .ambulance
+                dispatch.ambulance
                   .currentLng,
 
               status:
-                dispatch
-                  .ambulance
+                dispatch.ambulance
                   .status,
             }
           : null,
@@ -682,25 +746,20 @@ const triggerSOS = async (
         dispatch.driver
           ? {
               id:
-                dispatch
-                  .driver.id,
+                dispatch.driver.id,
 
               name:
-                dispatch
-                  .driver.name,
+                dispatch.driver.name,
 
               phone:
-                dispatch
-                  .driver.phone,
+                dispatch.driver.phone,
 
               licenseNumber:
-                dispatch
-                  .driver
+                dispatch.driver
                   .licenseNumber,
 
               rating:
-                dispatch
-                  .driver.rating,
+                dispatch.driver.rating,
             }
           : null,
 
@@ -708,28 +767,22 @@ const triggerSOS = async (
         dispatch.hospital
           ? {
               id:
-                dispatch
-                  .hospital.id,
+                dispatch.hospital.id,
 
               name:
-                dispatch
-                  .hospital.name,
+                dispatch.hospital.name,
 
               address:
-                dispatch
-                  .hospital.address,
+                dispatch.hospital.address,
 
               lat:
-                dispatch
-                  .hospital.lat,
+                dispatch.hospital.lat,
 
               lng:
-                dispatch
-                  .hospital.lng,
+                dispatch.hospital.lng,
 
               phone:
-                dispatch
-                  .hospital.phone,
+                dispatch.hospital.phone,
             }
           : null,
 
@@ -756,7 +809,371 @@ const triggerSOS = async (
   }
 };
 
+
+// ========================================
+// GET SOS STATUS
+// GET /api/sos/:sosEventId/status
+// ========================================
+//
+// This endpoint provides the current
+// ambulance position to the mobile app.
+//
+// For the current demo, the ambulance
+// automatically moves from its starting
+// coordinates toward the user's location.
+//
+// Later, this can be replaced with real
+// driver's GPS coordinates.
+//
+
+const getSOSStatus = async (
+  req,
+  res
+) => {
+  try {
+    const {
+      sosEventId,
+    } = req.params;
+
+
+    // ========================================
+    // VALIDATE SOS ID
+    // ========================================
+
+    if (!sosEventId) {
+      return res.status(400).json({
+        message:
+          "sosEventId is required",
+      });
+    }
+
+
+    // ========================================
+    // GET SOS EVENT
+    // ========================================
+
+    const sosDoc =
+      await db
+        .collection("sosEvents")
+        .doc(sosEventId)
+        .get();
+
+    if (!sosDoc.exists) {
+      return res.status(404).json({
+        message:
+          "SOS event not found",
+      });
+    }
+
+    const sos =
+      sosDoc.data();
+
+
+    // ========================================
+    // CHECK AMBULANCE
+    // ========================================
+
+    if (!sos.ambulanceId) {
+      return res.status(404).json({
+        message:
+          "No ambulance assigned to this SOS",
+      });
+    }
+
+
+    // ========================================
+    // GET AMBULANCE
+    // ========================================
+
+    const ambulanceDoc =
+      await db
+        .collection("ambulances")
+        .doc(
+          sos.ambulanceId
+        )
+        .get();
+
+    if (
+      !ambulanceDoc.exists
+    ) {
+      return res.status(404).json({
+        message:
+          "Assigned ambulance not found",
+      });
+    }
+
+    const ambulance =
+      ambulanceDoc.data();
+
+
+    // ========================================
+    // USER LOCATION
+    // ========================================
+
+    if (
+      !isValidCoordinate(
+        sos.lat,
+        -90,
+        90
+      ) ||
+      !isValidCoordinate(
+        sos.lng,
+        -180,
+        180
+      )
+    ) {
+      return res.status(500).json({
+        message:
+          "SOS has invalid coordinates",
+      });
+    }
+
+    const userLat =
+      Number(sos.lat);
+
+    const userLng =
+      Number(sos.lng);
+
+
+    // ========================================
+    // AMBULANCE START POSITION
+    // ========================================
+
+    const startLat =
+      Number(
+        sos.ambulanceStartLat
+      );
+
+    const startLng =
+      Number(
+        sos.ambulanceStartLng
+      );
+
+    if (
+      !isValidCoordinate(
+        startLat,
+        -90,
+        90
+      ) ||
+      !isValidCoordinate(
+        startLng,
+        -180,
+        180
+      )
+    ) {
+      return res.status(500).json({
+        message:
+          "Ambulance starting coordinates are invalid",
+      });
+    }
+
+
+    // ========================================
+    // TOTAL DISTANCE
+    // ========================================
+
+    const totalDistanceMeters =
+      haversineMeters(
+        startLat,
+        startLng,
+        userLat,
+        userLng
+      );
+
+
+    // ========================================
+    // TRIGGER TIME
+    // ========================================
+
+    let triggeredAt;
+
+    if (
+      sos.triggeredAt?.toDate
+    ) {
+      triggeredAt =
+        sos.triggeredAt.toDate();
+    } else {
+      triggeredAt =
+        new Date(
+          sos.triggeredAt
+        );
+    }
+
+    if (
+      Number.isNaN(
+        triggeredAt.getTime()
+      )
+    ) {
+      return res.status(500).json({
+        message:
+          "SOS trigger time is invalid",
+      });
+    }
+
+
+    // ========================================
+    // ELAPSED TIME
+    // ========================================
+
+    const elapsedSeconds =
+      Math.max(
+        0,
+        (
+          Date.now() -
+          triggeredAt.getTime()
+        ) / 1000
+      );
+
+
+    // ========================================
+    // TRAVEL TIME
+    // ========================================
+
+    const travelTimeSeconds =
+      Math.max(
+        60,
+        (
+          totalDistanceMeters /
+          1000
+        ) /
+          AMBULANCE_SPEED_KMH *
+          3600
+      );
+
+
+    // ========================================
+    // PROGRESS
+    // ========================================
+
+    const progress =
+      Math.min(
+        elapsedSeconds /
+          travelTimeSeconds,
+        1
+      );
+
+
+    // ========================================
+    // CURRENT AMBULANCE POSITION
+    // ========================================
+
+    const currentLat =
+      startLat +
+      (
+        userLat -
+        startLat
+      ) *
+        progress;
+
+    const currentLng =
+      startLng +
+      (
+        userLng -
+        startLng
+      ) *
+        progress;
+
+
+    // ========================================
+    // REMAINING DISTANCE
+    // ========================================
+
+    const remainingDistanceMeters =
+      totalDistanceMeters *
+      (1 - progress);
+
+
+    // ========================================
+    // REMAINING ETA
+    // ========================================
+
+    const remainingSeconds =
+      Math.max(
+        0,
+        Math.round(
+          travelTimeSeconds *
+            (1 - progress)
+        )
+      );
+
+
+    // ========================================
+    // STATUS
+    // ========================================
+
+    const status =
+      progress >= 1
+        ? "arrived"
+        : "enroute";
+
+
+    // ========================================
+    // RESPONSE
+    // ========================================
+
+    return res.status(200).json({
+      sosEventId,
+
+      status,
+
+      ambulance: {
+        id:
+          ambulanceDoc.id,
+
+        vehicleNumber:
+          ambulance.vehicleNumber,
+
+        type:
+          ambulance.type,
+
+        currentLat,
+
+        currentLng,
+
+        status,
+      },
+
+      user: {
+        lat:
+          userLat,
+
+        lng:
+          userLng,
+      },
+
+      distanceRemainingMeters:
+        Math.round(
+          remainingDistanceMeters
+        ),
+
+      etaSeconds:
+        remainingSeconds,
+
+      etaDisplay:
+        formatEta(
+          remainingSeconds
+        ),
+    });
+  } catch (error) {
+    console.error(
+      "Failed to get SOS status:",
+      error
+    );
+
+    return res.status(500).json({
+      message:
+        "Failed to get SOS status",
+    });
+  }
+};
+
+
+// ========================================
+// EXPORTS
+// ========================================
+
 module.exports = {
   triggerSOS,
   assignAmbulance,
+  getSOSStatus,
 };

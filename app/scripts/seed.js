@@ -40,6 +40,17 @@ const AMBULANCE_TYPES = ['BLS', 'ALS', 'ICU'];
 const SOS_STATUSES = ['resolved', 'resolved', 'resolved', 'cancelled', 'active'];
 const REQUEST_STATUSES = ['completed', 'completed', 'completed', 'cancelled', 'pending'];
 
+const MEDICINE_NAMES = [
+  'Paracetamol', 'Ibuprofen', 'Amoxicillin', 'Azithromycin', 'Cetirizine',
+  'Metformin', 'Atorvastatin', 'Amlodipine', 'Omeprazole', 'Pantoprazole',
+  'Losartan', 'Telmisartan', 'Aspirin', 'Clopidogrel', 'Insulin Glargine',
+  'Salbutamol', 'Montelukast', 'Levocetirizine', 'Diclofenac', 'Naproxen',
+  'Ciprofloxacin', 'Doxycycline', 'Metronidazole', 'Ranitidine', 'Domperidone',
+  'Ondansetron', 'Cefixime', 'Prednisolone', 'Dexamethasone', 'Hydrochlorothiazide',
+  'Vitamin D3', 'Vitamin B12', 'Calcium Carbonate', 'Iron Folic Acid', 'Zinc Sulphate',
+  'Multivitamin', 'ORS Sachets', 'Loperamide', 'Chlorpheniramine', 'Diphenhydramine',
+];
+
 function randomNearbyCoords(center, radiusKm = 15) {
   const radiusInDegrees = radiusKm / 111;
   const angle = Math.random() * 2 * Math.PI;
@@ -117,7 +128,7 @@ function generateMedicines() {
     const prescriptionRequired = faker.datatype.boolean({ probability: 0.35 });
     return {
       id: faker.string.uuid(),
-      name: faker.commerce.productName(),
+      name: faker.helpers.arrayElement(MEDICINE_NAMES),
       genericName: faker.science.chemicalElement().name,
       category: faker.helpers.arrayElement(MEDICINE_CATEGORIES),
       manufacturer: faker.company.name(),

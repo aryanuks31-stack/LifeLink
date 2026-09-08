@@ -3,17 +3,17 @@ const cors = require("cors");
 
 const app = express();
 
-// -------------------------
-// Middleware
-// -------------------------
+// ========================================
+// MIDDLEWARE
+// ========================================
 
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// -------------------------
-// Routes
-// -------------------------
+// ========================================
+// ROUTES
+// ========================================
 
 const sosRoutes = require("./routes/sosRoutes");
 const hospitalRoutes = require("./routes/hospitalRoutes");
@@ -22,26 +22,37 @@ const medicineRoutes = require("./routes/medicineRoutes");
 // SOS
 app.use("/api/sos", sosRoutes);
 
-// Hospitals
+// Hospital
 app.use("/api/hospitals", hospitalRoutes);
 
 // Medicines
 app.use("/api/medicines", medicineRoutes);
 
-// -------------------------
-// Health check
-// -------------------------
+// ========================================
+// TEST ROUTE
+// ========================================
+
+app.get("/api/sos-test", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "SOS routes are mounted",
+  });
+});
+
+// ========================================
+// ROOT
+// ========================================
 
 app.get("/", (req, res) => {
-  res.json({
+  res.status(200).json({
     success: true,
     message: "LifeLink backend is running",
   });
 });
 
-// -------------------------
-// 404
-// -------------------------
+// ========================================
+// 404 HANDLER
+// ========================================
 
 app.use((req, res) => {
   res.status(404).json({
@@ -50,9 +61,9 @@ app.use((req, res) => {
   });
 });
 
-// -------------------------
-// Error handler
-// -------------------------
+// ========================================
+// ERROR HANDLER
+// ========================================
 
 app.use((err, req, res, next) => {
   console.error("Server error:", err);

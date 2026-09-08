@@ -1,19 +1,27 @@
-const { initializeApp, cert } = require('firebase-admin/app');
+const {
+  initializeApp,
+  cert,
+} = require("firebase-admin/app");
+
 const {
   getFirestore,
   FieldValue,
   Timestamp,
-} = require('firebase-admin/firestore');
+} = require("firebase-admin/firestore");
 
-const { fakerEN_IN: faker } = require('@faker-js/faker');
+const {
+  fakerEN_IN: faker,
+} = require("@faker-js/faker");
 
-const serviceAccount = require('./serviceAccountKey.json');
+const serviceAccount =
+  require("./serviceAccountKey.json");
 
 initializeApp({
   credential: cert(serviceAccount),
 });
 
 const db = getFirestore();
+
 
 // ============================================================
 // CONFIG
@@ -32,7 +40,7 @@ const USER_COUNT = 5;
 const BLOOD_DRIVE_COUNT = 12;
 
 const DEMO_USER_ID =
-  'cbab8131-96e5-4ea4-a580-c8db339ffc5f';
+  "cbab8131-96e5-4ea4-a580-c8db339ffc5f";
 
 
 // ============================================================
@@ -40,71 +48,71 @@ const DEMO_USER_ID =
 // ============================================================
 
 const JAIPUR_AREAS = [
-  'Malviya Nagar',
-  'Vaishali Nagar',
-  'C-Scheme',
-  'Mansarovar',
-  'Jagatpura',
-  'Tonk Road',
-  'Vidhyadhar Nagar',
-  'Raja Park',
-  'Bani Park',
-  'Sanganer',
+  "Malviya Nagar",
+  "Vaishali Nagar",
+  "C-Scheme",
+  "Mansarovar",
+  "Jagatpura",
+  "Tonk Road",
+  "Vidhyadhar Nagar",
+  "Raja Park",
+  "Bani Park",
+  "Sanganer",
 ];
 
 const BLOOD_TYPES = [
-  'A+',
-  'A-',
-  'B+',
-  'B-',
-  'O+',
-  'O-',
-  'AB+',
-  'AB-',
+  "A+",
+  "A-",
+  "B+",
+  "B-",
+  "O+",
+  "O-",
+  "AB+",
+  "AB-",
 ];
 
 const BLOOD_DONATION_NGOS = [
-  'Indian Red Cross Society, Jaipur',
-  'Sankalp India Foundation',
-  'Lions Blood Bank Jaipur',
-  'Rotary Club of Jaipur',
-  'Jeevan Dhara Blood Bank',
-  'Thalassemia & Sickle Cell Society',
+  "Indian Red Cross Society, Jaipur",
+  "Sankalp India Foundation",
+  "Lions Blood Bank Jaipur",
+  "Rotary Club of Jaipur",
+  "Jeevan Dhara Blood Bank",
+  "Thalassemia & Sickle Cell Society",
 ];
 
 const MEDICINE_CATEGORIES = [
-  'Pain Relief',
-  'Antibiotics',
-  'Cardiac',
-  'Diabetes',
-  'Respiratory',
-  'Digestive',
-  'Vitamins & Supplements',
-  'Skin Care',
-  'First Aid',
-  'Allergy',
+  "Pain Relief",
+  "Antibiotics",
+  "Cardiac",
+  "Diabetes",
+  "Respiratory",
+  "Digestive",
+  "Vitamins & Supplements",
+  "Skin Care",
+  "First Aid",
+  "Allergy",
 ];
 
 const AMBULANCE_TYPES = [
-  'BLS',
-  'ALS',
-  'ICU',
+  "BLS",
+  "ALS",
+  "ICU",
 ];
 
 const SOS_STATUSES = [
-  'resolved',
-  'resolved',
-  'resolved',
-  'cancelled',
-  'active',
+  "resolved",
+  "resolved",
+  "resolved",
+  "cancelled",
+  "active",
 ];
 
 const REQUEST_STATUSES = [
-  'completed',
-  'completed',
-  'completed',
-  'cancelled',
-  'pending',
+  "completed",
+  "completed",
+  "completed",
+  "cancelled",
+  "pending",
 ];
 
 
@@ -112,25 +120,37 @@ const REQUEST_STATUSES = [
 // HELPER FUNCTIONS
 // ============================================================
 
-function randomNearbyCoords(center, radiusKm = 15) {
-  const radiusInDegrees = radiusKm / 111;
+function randomNearbyCoords(
+  center,
+  radiusKm = 15
+) {
+  const radiusInDegrees =
+    radiusKm / 111;
 
-  const angle = Math.random() * 2 * Math.PI;
-  const distance = Math.random() * radiusInDegrees;
+  const angle =
+    Math.random() * 2 * Math.PI;
+
+  const distance =
+    Math.random() *
+    radiusInDegrees;
 
   return {
     lat:
       center.lat +
-      distance * Math.cos(angle),
+      distance *
+        Math.cos(angle),
 
     lng:
       center.lng +
-      distance * Math.sin(angle),
+      distance *
+        Math.sin(angle),
   };
 }
 
 
-function randomPastDate(daysBack = 60) {
+function randomPastDate(
+  daysBack = 60
+) {
   return Timestamp.fromDate(
     faker.date.recent({
       days: daysBack,
@@ -148,7 +168,9 @@ function generateHospitals() {
     { length: HOSPITAL_COUNT },
     () => {
       const coords =
-        randomNearbyCoords(CITY_CENTER);
+        randomNearbyCoords(
+          CITY_CENTER
+        );
 
       const totalBeds =
         faker.number.int({
@@ -183,26 +205,31 @@ function generateHospitals() {
         id: faker.string.uuid(),
 
         name: `${area} ${faker.helpers.arrayElement([
-          'General Hospital',
-          'Medical Center',
-          'Trauma Center',
-          'Multispecialty Hospital',
+          "General Hospital",
+          "Medical Center",
+          "Trauma Center",
+          "Multispecialty Hospital",
         ])}`,
 
         address:
           `${faker.location.buildingNumber()}, ` +
           `${area}, Jaipur, Rajasthan ` +
-          `${faker.location.zipCode('3020##')}`,
+          `${faker.location.zipCode(
+            "3020##"
+          )}`,
 
         lat: coords.lat,
         lng: coords.lng,
 
-        phone: faker.phone.number(),
+        phone:
+          faker.phone.number(),
 
         totalBeds,
+
         availableBeds,
 
         icuTotal,
+
         icuAvailable,
 
         isTraumaCenter:
@@ -230,12 +257,14 @@ function generateHospitals() {
 function generateDrivers() {
   return Array.from(
     { length: DRIVER_COUNT },
-    () => ({
+    (_, i) => ({
       id: faker.string.uuid(),
 
-      name: faker.person.fullName(),
+      name:
+        faker.person.fullName(),
 
-      phone: faker.phone.number(),
+      phone:
+        faker.phone.number(),
 
       licenseNumber:
         faker.string
@@ -248,12 +277,12 @@ function generateDrivers() {
           max: 20,
         }),
 
+      // First 10 drivers are guaranteed
+      // to be available for SOS dispatch.
       status:
-        faker.helpers.arrayElement([
-          'available',
-          'on-duty',
-          'off-duty',
-        ]),
+        i < 10
+          ? "on-duty"
+          : "off-duty",
 
       rating:
         faker.number.float({
@@ -277,22 +306,44 @@ function generateAmbulances(
   return Array.from(
     { length: AMBULANCE_COUNT },
     (_, i) => {
+
       const hospital =
         faker.helpers.arrayElement(
           hospitals
         );
 
-      const coords =
-        randomNearbyCoords(
-          {
-            lat: hospital.lat,
-            lng: hospital.lng,
-          },
-          5
-        );
+      let coords;
+
+      // --------------------------------------------------------
+      // GUARANTEED SOS DEMO AMBULANCE
+      // --------------------------------------------------------
+      //
+      // The demo user location from the app is approximately:
+      //
+      // 26.8442342, 75.564581
+      //
+      // This ambulance starts very close to that location.
+      //
+
+      if (i === 0) {
+        coords = {
+          lat: 26.8500,
+          lng: 75.5700,
+        };
+      } else {
+        coords =
+          randomNearbyCoords(
+            {
+              lat: hospital.lat,
+              lng: hospital.lng,
+            },
+            5
+          );
+      }
 
       return {
-        id: faker.string.uuid(),
+        id:
+          faker.string.uuid(),
 
         vehicleNumber:
           `RJ-${faker.number.int({
@@ -301,7 +352,7 @@ function generateAmbulances(
           })}-` +
           `${faker.string.alpha({
             length: 2,
-            casing: 'upper',
+            casing: "upper",
           })}-` +
           `${faker.number.int({
             min: 1000,
@@ -313,23 +364,31 @@ function generateAmbulances(
             AMBULANCE_TYPES
           ),
 
-        hospitalId: hospital.id,
+        hospitalId:
+          hospital.id,
 
+        // Every ambulance gets a driver.
+        // First 10 correspond to on-duty drivers.
         driverId:
           drivers[
             i % drivers.length
           ].id,
 
+        // First 10 ambulances are guaranteed
+        // to be available.
         status:
-          faker.helpers.arrayElement([
-            'available',
-            'available',
-            'enroute',
-            'busy',
-          ]),
+          i < 10
+            ? "available"
+            : faker.helpers.arrayElement([
+                "enroute",
+                "busy",
+              ]),
 
-        currentLat: coords.lat,
-        currentLng: coords.lng,
+        currentLat:
+          coords.lat,
+
+        currentLng:
+          coords.lng,
 
         lastUpdated:
           FieldValue.serverTimestamp(),
@@ -342,298 +401,327 @@ function generateAmbulances(
 // ============================================================
 // MEDICINES
 // ============================================================
-//
-// IMPORTANT:
-// These are fixed generic medicine records.
-// No Faker ecommerce names are used here.
-//
 
 function generateMedicines() {
   const medicines = [
     {
-      name: 'Paracetamol',
-      genericName: 'Paracetamol',
-      category: 'Pain Relief',
-      manufacturer: 'Generic Pharmaceuticals',
+      name: "Paracetamol",
+      genericName: "Paracetamol",
+      category: "Pain Relief",
+      manufacturer:
+        "Generic Pharmaceuticals",
       price: 25,
       prescriptionRequired: false,
       description:
-        'Analgesic and antipyretic medicine.',
+        "Analgesic and antipyretic medicine.",
     },
 
     {
-      name: 'Ibuprofen',
-      genericName: 'Ibuprofen',
-      category: 'Pain Relief',
-      manufacturer: 'Generic Pharmaceuticals',
+      name: "Ibuprofen",
+      genericName: "Ibuprofen",
+      category: "Pain Relief",
+      manufacturer:
+        "Generic Pharmaceuticals",
       price: 35,
       prescriptionRequired: false,
       description:
-        'Non-steroidal anti-inflammatory medicine.',
+        "Non-steroidal anti-inflammatory medicine.",
     },
 
     {
-      name: 'Amoxicillin',
-      genericName: 'Amoxicillin',
-      category: 'Antibiotics',
-      manufacturer: 'Generic Pharmaceuticals',
+      name: "Amoxicillin",
+      genericName: "Amoxicillin",
+      category: "Antibiotics",
+      manufacturer:
+        "Generic Pharmaceuticals",
       price: 80,
       prescriptionRequired: true,
       description:
-        'Penicillin-class antibiotic.',
+        "Penicillin-class antibiotic.",
     },
 
     {
-      name: 'Azithromycin',
-      genericName: 'Azithromycin',
-      category: 'Antibiotics',
-      manufacturer: 'Generic Pharmaceuticals',
+      name: "Azithromycin",
+      genericName: "Azithromycin",
+      category: "Antibiotics",
+      manufacturer:
+        "Generic Pharmaceuticals",
       price: 65,
       prescriptionRequired: true,
       description:
-        'Macrolide antibiotic.',
+        "Macrolide antibiotic.",
     },
 
     {
-      name: 'Cetirizine',
-      genericName: 'Cetirizine',
-      category: 'Allergy',
-      manufacturer: 'Generic Pharmaceuticals',
+      name: "Cetirizine",
+      genericName: "Cetirizine",
+      category: "Allergy",
+      manufacturer:
+        "Generic Pharmaceuticals",
       price: 20,
       prescriptionRequired: false,
       description:
-        'Antihistamine medicine.',
+        "Antihistamine medicine.",
     },
 
     {
-      name: 'Levocetirizine',
-      genericName: 'Levocetirizine',
-      category: 'Allergy',
-      manufacturer: 'Generic Pharmaceuticals',
+      name: "Levocetirizine",
+      genericName: "Levocetirizine",
+      category: "Allergy",
+      manufacturer:
+        "Generic Pharmaceuticals",
       price: 30,
       prescriptionRequired: false,
       description:
-        'Antihistamine medicine.',
+        "Antihistamine medicine.",
     },
 
     {
-      name: 'Metformin',
-      genericName: 'Metformin',
-      category: 'Diabetes',
-      manufacturer: 'Generic Pharmaceuticals',
+      name: "Metformin",
+      genericName: "Metformin",
+      category: "Diabetes",
+      manufacturer:
+        "Generic Pharmaceuticals",
       price: 30,
       prescriptionRequired: true,
       description:
-        'Medicine used in the management of type 2 diabetes.',
+        "Medicine used in the management of type 2 diabetes.",
     },
 
     {
-      name: 'Atorvastatin',
-      genericName: 'Atorvastatin',
-      category: 'Cardiac',
-      manufacturer: 'Generic Pharmaceuticals',
+      name: "Atorvastatin",
+      genericName: "Atorvastatin",
+      category: "Cardiac",
+      manufacturer:
+        "Generic Pharmaceuticals",
       price: 45,
       prescriptionRequired: true,
       description:
-        'Statin medicine used to manage cholesterol.',
+        "Statin medicine used to manage cholesterol.",
     },
 
     {
-      name: 'Amlodipine',
-      genericName: 'Amlodipine',
-      category: 'Cardiac',
-      manufacturer: 'Generic Pharmaceuticals',
+      name: "Amlodipine",
+      genericName: "Amlodipine",
+      category: "Cardiac",
+      manufacturer:
+        "Generic Pharmaceuticals",
       price: 25,
       prescriptionRequired: true,
       description:
-        'Calcium channel blocker.',
+        "Calcium channel blocker.",
     },
 
     {
-      name: 'Losartan',
-      genericName: 'Losartan',
-      category: 'Cardiac',
-      manufacturer: 'Generic Pharmaceuticals',
+      name: "Losartan",
+      genericName: "Losartan",
+      category: "Cardiac",
+      manufacturer:
+        "Generic Pharmaceuticals",
       price: 35,
       prescriptionRequired: true,
       description:
-        'Angiotensin receptor blocker.',
+        "Angiotensin receptor blocker.",
     },
 
     {
-      name: 'Telmisartan',
-      genericName: 'Telmisartan',
-      category: 'Cardiac',
-      manufacturer: 'Generic Pharmaceuticals',
+      name: "Telmisartan",
+      genericName: "Telmisartan",
+      category: "Cardiac",
+      manufacturer:
+        "Generic Pharmaceuticals",
       price: 40,
       prescriptionRequired: true,
       description:
-        'Angiotensin receptor blocker.',
+        "Angiotensin receptor blocker.",
     },
 
     {
-      name: 'Aspirin',
-      genericName: 'Aspirin',
-      category: 'Cardiac',
-      manufacturer: 'Generic Pharmaceuticals',
+      name: "Aspirin",
+      genericName: "Aspirin",
+      category: "Cardiac",
+      manufacturer:
+        "Generic Pharmaceuticals",
       price: 20,
       prescriptionRequired: false,
       description:
-        'Antiplatelet medicine.',
+        "Antiplatelet medicine.",
     },
 
     {
-      name: 'Clopidogrel',
-      genericName: 'Clopidogrel',
-      category: 'Cardiac',
-      manufacturer: 'Generic Pharmaceuticals',
+      name: "Clopidogrel",
+      genericName: "Clopidogrel",
+      category: "Cardiac",
+      manufacturer:
+        "Generic Pharmaceuticals",
       price: 55,
       prescriptionRequired: true,
       description:
-        'Antiplatelet medicine.',
+        "Antiplatelet medicine.",
     },
 
     {
-      name: 'Omeprazole',
-      genericName: 'Omeprazole',
-      category: 'Digestive',
-      manufacturer: 'Generic Pharmaceuticals',
+      name: "Omeprazole",
+      genericName: "Omeprazole",
+      category: "Digestive",
+      manufacturer:
+        "Generic Pharmaceuticals",
       price: 30,
       prescriptionRequired: false,
       description:
-        'Proton pump inhibitor medicine.',
+        "Proton pump inhibitor medicine.",
     },
 
     {
-      name: 'Pantoprazole',
-      genericName: 'Pantoprazole',
-      category: 'Digestive',
-      manufacturer: 'Generic Pharmaceuticals',
+      name: "Pantoprazole",
+      genericName: "Pantoprazole",
+      category: "Digestive",
+      manufacturer:
+        "Generic Pharmaceuticals",
       price: 40,
       prescriptionRequired: false,
       description:
-        'Proton pump inhibitor medicine.',
+        "Proton pump inhibitor medicine.",
     },
 
     {
-      name: 'Ondansetron',
-      genericName: 'Ondansetron',
-      category: 'Digestive',
-      manufacturer: 'Generic Pharmaceuticals',
+      name: "Ondansetron",
+      genericName: "Ondansetron",
+      category: "Digestive",
+      manufacturer:
+        "Generic Pharmaceuticals",
       price: 30,
       prescriptionRequired: true,
       description:
-        'Medicine used to prevent nausea and vomiting.',
+        "Medicine used to prevent nausea and vomiting.",
     },
 
     {
-      name: 'Salbutamol',
-      genericName: 'Salbutamol',
-      category: 'Respiratory',
-      manufacturer: 'Generic Pharmaceuticals',
+      name: "Salbutamol",
+      genericName: "Salbutamol",
+      category: "Respiratory",
+      manufacturer:
+        "Generic Pharmaceuticals",
       price: 25,
       prescriptionRequired: true,
       description:
-        'Bronchodilator medicine.',
+        "Bronchodilator medicine.",
     },
 
     {
-      name: 'Montelukast',
-      genericName: 'Montelukast',
-      category: 'Respiratory',
-      manufacturer: 'Generic Pharmaceuticals',
+      name: "Montelukast",
+      genericName: "Montelukast",
+      category: "Respiratory",
+      manufacturer:
+        "Generic Pharmaceuticals",
       price: 50,
       prescriptionRequired: true,
       description:
-        'Leukotriene receptor antagonist.',
+        "Leukotriene receptor antagonist.",
     },
 
     {
-      name: 'Clotrimazole',
-      genericName: 'Clotrimazole',
-      category: 'Skin Care',
-      manufacturer: 'Generic Pharmaceuticals',
+      name: "Clotrimazole",
+      genericName: "Clotrimazole",
+      category: "Skin Care",
+      manufacturer:
+        "Generic Pharmaceuticals",
       price: 40,
       prescriptionRequired: false,
       description:
-        'Topical antifungal medicine.',
+        "Topical antifungal medicine.",
     },
 
     {
-      name: 'Vitamin D3',
-      genericName: 'Cholecalciferol',
-      category: 'Vitamins & Supplements',
-      manufacturer: 'Generic Pharmaceuticals',
+      name: "Vitamin D3",
+      genericName: "Cholecalciferol",
+      category:
+        "Vitamins & Supplements",
+      manufacturer:
+        "Generic Pharmaceuticals",
       price: 60,
       prescriptionRequired: false,
       description:
-        'Vitamin D supplement.',
+        "Vitamin D supplement.",
     },
 
     {
-      name: 'Vitamin B12',
-      genericName: 'Cyanocobalamin',
-      category: 'Vitamins & Supplements',
-      manufacturer: 'Generic Pharmaceuticals',
+      name: "Vitamin B12",
+      genericName: "Cyanocobalamin",
+      category:
+        "Vitamins & Supplements",
+      manufacturer:
+        "Generic Pharmaceuticals",
       price: 50,
       prescriptionRequired: false,
       description:
-        'Vitamin B12 supplement.',
+        "Vitamin B12 supplement.",
     },
 
     {
-      name: 'Calcium Carbonate',
-      genericName: 'Calcium Carbonate',
-      category: 'Vitamins & Supplements',
-      manufacturer: 'Generic Pharmaceuticals',
+      name: "Calcium Carbonate",
+      genericName: "Calcium Carbonate",
+      category:
+        "Vitamins & Supplements",
+      manufacturer:
+        "Generic Pharmaceuticals",
       price: 45,
       prescriptionRequired: false,
       description:
-        'Calcium supplement.',
+        "Calcium supplement.",
     },
 
     {
-      name: 'Iron Folic Acid',
-      genericName: 'Ferrous Fumarate + Folic Acid',
-      category: 'Vitamins & Supplements',
-      manufacturer: 'Generic Pharmaceuticals',
+      name: "Iron Folic Acid",
+      genericName:
+        "Ferrous Fumarate + Folic Acid",
+      category:
+        "Vitamins & Supplements",
+      manufacturer:
+        "Generic Pharmaceuticals",
       price: 35,
       prescriptionRequired: false,
       description:
-        'Iron and folic acid supplement.',
+        "Iron and folic acid supplement.",
     },
 
     {
-      name: 'Zinc Sulphate',
-      genericName: 'Zinc Sulphate',
-      category: 'Vitamins & Supplements',
-      manufacturer: 'Generic Pharmaceuticals',
+      name: "Zinc Sulphate",
+      genericName: "Zinc Sulphate",
+      category:
+        "Vitamins & Supplements",
+      manufacturer:
+        "Generic Pharmaceuticals",
       price: 30,
       prescriptionRequired: false,
       description:
-        'Zinc supplement.',
+        "Zinc supplement.",
     },
 
     {
-      name: 'Multivitamin',
-      genericName: 'Multivitamin',
-      category: 'Vitamins & Supplements',
-      manufacturer: 'Generic Pharmaceuticals',
+      name: "Multivitamin",
+      genericName: "Multivitamin",
+      category:
+        "Vitamins & Supplements",
+      manufacturer:
+        "Generic Pharmaceuticals",
       price: 80,
       prescriptionRequired: false,
       description:
-        'Combination vitamin and mineral supplement.',
+        "Combination vitamin and mineral supplement.",
     },
 
     {
-      name: 'ORS Sachets',
-      genericName: 'Oral Rehydration Salts',
-      category: 'First Aid',
-      manufacturer: 'Generic Pharmaceuticals',
+      name: "ORS Sachets",
+      genericName:
+        "Oral Rehydration Salts",
+      category: "First Aid",
+      manufacturer:
+        "Generic Pharmaceuticals",
       price: 10,
       prescriptionRequired: false,
       description:
-        'Oral rehydration solution preparation.',
+        "Oral rehydration solution preparation.",
     },
   ];
 
@@ -671,11 +759,14 @@ function generateUsers() {
     () => ({
       id: faker.string.uuid(),
 
-      name: faker.person.fullName(),
+      name:
+        faker.person.fullName(),
 
-      phone: faker.phone.number(),
+      phone:
+        faker.phone.number(),
 
-      email: faker.internet.email(),
+      email:
+        faker.internet.email(),
 
       bloodType:
         faker.helpers.arrayElement(
@@ -687,20 +778,20 @@ function generateUsers() {
           .birthdate({
             min: 18,
             max: 75,
-            mode: 'age',
+            mode: "age",
           })
           .toISOString()
-          .split('T')[0],
+          .split("T")[0],
 
       allergies:
         faker.helpers.arrayElements(
           [
-            'Penicillin',
-            'Peanuts',
-            'Latex',
-            'Pollen',
-            'Dust',
-            'None',
+            "Penicillin",
+            "Peanuts",
+            "Latex",
+            "Pollen",
+            "Dust",
+            "None",
           ],
           {
             min: 0,
@@ -719,7 +810,9 @@ function generateUsers() {
 // EMERGENCY CONTACTS
 // ============================================================
 
-function generateEmergencyContacts(users) {
+function generateEmergencyContacts(
+  users
+) {
   const contacts = [];
 
   users.forEach((user) => {
@@ -737,19 +830,22 @@ function generateEmergencyContacts(users) {
       contacts.push({
         id: faker.string.uuid(),
 
-        userId: user.id,
+        userId:
+          user.id,
 
-        name: faker.person.fullName(),
+        name:
+          faker.person.fullName(),
 
-        phone: faker.phone.number(),
+        phone:
+          faker.phone.number(),
 
         relation:
           faker.helpers.arrayElement([
-            'Parent',
-            'Sibling',
-            'Spouse',
-            'Friend',
-            'Child',
+            "Parent",
+            "Sibling",
+            "Spouse",
+            "Friend",
+            "Child",
           ]),
       });
     }
@@ -800,19 +896,25 @@ function generateSOSEvents(
       events.push({
         id: faker.string.uuid(),
 
-        userId: user.id,
+        userId:
+          user.id,
 
         status:
           faker.helpers.arrayElement(
             SOS_STATUSES
           ),
 
-        lat: coords.lat,
-        lng: coords.lng,
+        lat:
+          coords.lat,
 
-        hospitalId: hospital.id,
+        lng:
+          coords.lng,
 
-        ambulanceId: ambulance.id,
+        hospitalId:
+          hospital.id,
+
+        ambulanceId:
+          ambulance.id,
 
         triggeredAt:
           randomPastDate(30),
@@ -868,20 +970,25 @@ function generateAmbulanceRequests(
       requests.push({
         id: faker.string.uuid(),
 
-        userId: user.id,
+        userId:
+          user.id,
 
-        ambulanceId: ambulance.id,
+        ambulanceId:
+          ambulance.id,
 
-        hospitalId: hospital.id,
+        hospitalId:
+          hospital.id,
 
         status:
           faker.helpers.arrayElement(
             REQUEST_STATUSES
           ),
 
-        pickupLat: coords.lat,
+        pickupLat:
+          coords.lat,
 
-        pickupLng: coords.lng,
+        pickupLng:
+          coords.lng,
 
         requestedAt:
           randomPastDate(30),
@@ -904,6 +1011,7 @@ function generateBloodDonationDrives() {
   return Array.from(
     { length: BLOOD_DRIVE_COUNT },
     () => {
+
       const coords =
         randomNearbyCoords(
           CITY_CENTER
@@ -946,10 +1054,10 @@ function generateBloodDonationDrives() {
       const status =
         daysFromNow === 0
           ? faker.helpers.arrayElement([
-              'ongoing',
-              'upcoming',
+              "ongoing",
+              "upcoming",
             ])
-          : 'upcoming';
+          : "upcoming";
 
       return {
         id: faker.string.uuid(),
@@ -959,7 +1067,8 @@ function generateBloodDonationDrives() {
 
         ngo,
 
-        organizer: ngo,
+        organizer:
+          ngo,
 
         address:
           `${faker.location.buildingNumber()}, ` +
@@ -967,16 +1076,23 @@ function generateBloodDonationDrives() {
 
         area,
 
-        lat: coords.lat,
-        lng: coords.lng,
+        lat:
+          coords.lat,
 
-        phone: faker.phone.number(),
+        lng:
+          coords.lng,
 
-        date: driveDate,
+        phone:
+          faker.phone.number(),
 
-        startTime: '9:00 AM',
+        date:
+          driveDate,
 
-        endTime: '5:00 PM',
+        startTime:
+          "9:00 AM",
+
+        endTime:
+          "5:00 PM",
 
         bloodTypesNeeded:
           faker.helpers.arrayElements(
@@ -998,7 +1114,7 @@ function generateBloodDonationDrives() {
         status,
 
         description:
-          'Donate blood and save lives. Walk-ins welcome; bring a valid government ID.',
+          "Donate blood and save lives. Walk-ins welcome; bring a valid government ID.",
       };
     }
   );
@@ -1027,46 +1143,57 @@ async function clearCollection(
 
   const batchSize = 400;
 
-  const docs = snapshot.docs;
+  const docs =
+    snapshot.docs;
 
   for (
     let i = 0;
     i < docs.length;
     i += batchSize
   ) {
-    const batch = db.batch();
+    const batch =
+      db.batch();
 
     docs
-      .slice(i, i + batchSize)
+      .slice(
+        i,
+        i + batchSize
+      )
       .forEach((doc) => {
-        batch.delete(doc.ref);
+        batch.delete(
+          doc.ref
+        );
       });
 
     await batch.commit();
   }
 
   console.log(
-    `🗑️  Cleared ${docs.length} docs from "${collectionName}"`
+    `🗑️ Cleared ${docs.length} docs from "${collectionName}"`
   );
 }
 
 
 async function clearAll() {
   const collections = [
-    'hospitals',
-    'drivers',
-    'ambulances',
-    'medicines',
-    'users',
-    'emergencyContacts',
-    'sosEvents',
-    'ambulanceRequests',
-    'bloodDonationDrives',
-    'bloodDonationRegistrations',
+    "hospitals",
+    "drivers",
+    "ambulances",
+    "medicines",
+    "users",
+    "emergencyContacts",
+    "sosEvents",
+    "ambulanceRequests",
+    "bloodDonationDrives",
+    "bloodDonationRegistrations",
   ];
 
-  for (const name of collections) {
-    await clearCollection(name);
+  for (
+    const name of collections
+  ) {
+    await clearCollection(
+      name
+    );
   }
 }
 
@@ -1086,7 +1213,8 @@ async function seedCollection(
     i < docs.length;
     i += batchSize
   ) {
-    const batch = db.batch();
+    const batch =
+      db.batch();
 
     const chunk =
       docs.slice(
@@ -1097,10 +1225,15 @@ async function seedCollection(
     chunk.forEach((doc) => {
       const ref =
         db
-          .collection(collectionName)
+          .collection(
+            collectionName
+          )
           .doc(doc.id);
 
-      batch.set(ref, doc);
+      batch.set(
+        ref,
+        doc
+      );
     });
 
     await batch.commit();
@@ -1118,16 +1251,20 @@ async function seedCollection(
 
 async function main() {
   console.log(
-    '🧹 Clearing old data...\n'
+    "🧹 Clearing old data...\n"
   );
 
   await clearAll();
 
   console.log(
-    '\n🌱 Starting seed (Jaipur)...\n'
+    "\n🌱 Starting seed (Jaipur)...\n"
   );
 
-  // Generate all data
+
+  // ==========================================================
+  // GENERATE DATA
+  // ==========================================================
+
   const hospitals =
     generateHospitals();
 
@@ -1159,55 +1296,77 @@ async function main() {
   const demoUserExists =
     users.some(
       (u) =>
-        u.id === DEMO_USER_ID
+        u.id ===
+        DEMO_USER_ID
     );
 
   if (!demoUserExists) {
+
     users.push({
-      id: DEMO_USER_ID,
+      id:
+        DEMO_USER_ID,
 
-      name: 'Demo User',
+      name:
+        "Demo User",
 
-      phone: '9999999999',
+      phone:
+        "9999999999",
 
-      email: 'demo@lifelink.local',
+      email:
+        "demo@lifelink.local",
 
-      bloodType: 'O+',
+      bloodType:
+        "O+",
 
-      dateOfBirth: '1995-01-01',
+      dateOfBirth:
+        "1995-01-01",
 
-      allergies: [],
+      allergies:
+        [],
 
       createdAt:
         FieldValue.serverTimestamp(),
     });
 
+
     emergencyContacts.push(
       {
-        id: faker.string.uuid(),
+        id:
+          faker.string.uuid(),
 
-        userId: DEMO_USER_ID,
+        userId:
+          DEMO_USER_ID,
 
-        name: 'Emergency Contact 1',
+        name:
+          "Emergency Contact 1",
 
-        phone: '9876543210',
+        phone:
+          "9876543210",
 
-        relation: 'Parent',
+        relation:
+          "Parent",
       },
 
       {
-        id: faker.string.uuid(),
+        id:
+          faker.string.uuid(),
 
-        userId: DEMO_USER_ID,
+        userId:
+          DEMO_USER_ID,
 
-        name: 'Emergency Contact 2',
+        name:
+          "Emergency Contact 2",
 
-        phone: '9876543211',
+        phone:
+          "9876543211",
 
-        relation: 'Sibling',
+        relation:
+          "Sibling",
       }
     );
+
   } else {
+
     const hasContacts =
       emergencyContacts.some(
         (c) =>
@@ -1216,16 +1375,22 @@ async function main() {
       );
 
     if (!hasContacts) {
+
       emergencyContacts.push({
-        id: faker.string.uuid(),
+        id:
+          faker.string.uuid(),
 
-        userId: DEMO_USER_ID,
+        userId:
+          DEMO_USER_ID,
 
-        name: 'Emergency Contact 1',
+        name:
+          "Emergency Contact 1",
 
-        phone: '9876543210',
+        phone:
+          "9876543210",
 
-        relation: 'Parent',
+        relation:
+          "Parent",
       });
     }
   }
@@ -1258,53 +1423,61 @@ async function main() {
   // ==========================================================
 
   await seedCollection(
-    'hospitals',
+    "hospitals",
     hospitals
   );
 
   await seedCollection(
-    'drivers',
+    "drivers",
     drivers
   );
 
   await seedCollection(
-    'ambulances',
+    "ambulances",
     ambulances
   );
 
   await seedCollection(
-    'medicines',
+    "medicines",
     medicines
   );
 
   await seedCollection(
-    'users',
+    "users",
     users
   );
 
   await seedCollection(
-    'emergencyContacts',
+    "emergencyContacts",
     emergencyContacts
   );
 
   await seedCollection(
-    'sosEvents',
+    "sosEvents",
     sosEvents
   );
 
   await seedCollection(
-    'ambulanceRequests',
+    "ambulanceRequests",
     ambulanceRequests
   );
 
   await seedCollection(
-    'bloodDonationDrives',
+    "bloodDonationDrives",
     bloodDonationDrives
   );
 
 
   console.log(
-    '\n🎉 Seed complete!'
+    "\n🎉 Seed complete!"
+  );
+
+  console.log(
+    "🚑 SOS demo ambulance is guaranteed to be available."
+  );
+
+  console.log(
+    "👨‍✈️ SOS demo driver is guaranteed to be on-duty."
   );
 
   process.exit(0);
@@ -1317,7 +1490,7 @@ async function main() {
 
 main().catch((err) => {
   console.error(
-    '❌ Seed failed:',
+    "❌ Seed failed:",
     err
   );
 

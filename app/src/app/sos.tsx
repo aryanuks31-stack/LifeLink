@@ -1,1060 +1,2373 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { BACKEND_URL } from '../constants/api';
+
 import {
-  ActivityIndicator,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
+
+import {
   Alert,
+  Animated,
+  Linking,
   Pressable,
-  SafeAreaView,
+  ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from 'react-native';
+
 import MapView, {
   Marker,
   Polyline,
   PROVIDER_GOOGLE,
 } from 'react-native-maps';
+
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 import * as Location from 'expo-location';
-import { router } from 'expo-router';
+import * as Haptics from 'expo-haptics';
 
-const BACKEND_URL = 'https://lifelink-nils.onrender.com';
+import { ScreenHeader } from '@/components/screen-header';
+import { AppColors, Spacing } from '@/constants/theme';
 
-const DEMO_USER_ID = 'cbab8131-96e5-4ea4-a580-c8db339ffc5f';
+// ========================================
+// CONFIGURATION
+// ========================================
+
+const DEMO_USER_ID =
+  'cbab8131-96e5-4ea4-a580-c8db339ffc5f';
+
+const HOLD_DURATION = 1500;
+const TRACKING_INTERVAL = 3000;
+
+// ========================================
+// TYPES
+// ========================================
 
 type Coordinate = {
   latitude: number;
   longitude: number;
 };
 
-type Hospital = {
+type AmbulanceInfo = {
+  id: string;
+  vehicleNumber: string;
+  type: string;
+  currentLat: number;
+  currentLng: number;
+  status?: string;
+};
+
+type DriverInfo = {
   id: string;
   name: string;
-  address?: string;
-  lat?: number;
-  lng?: number;
-  phone?: string;
+  phone: string;
+  licenseNumber: string;
+  rating: number;
 };
 
-type AmbulanceLocation = Coordinate & {
-  status?: string;
+type HospitalInfo = {
+  id: string;
+  name: string;
+  address: string;
+  lat: number;
+  lng: number;
+  phone: string;
 };
 
-type SOSResponse = {
-  message?: string;
-  sosEventId?: string;
-  contactsNotified?: number;
-  contactsFailed?: number;
-  ambulance?: any;
-  driver?: any;
-  hospital?: Hospital;
-  etaSeconds?: number;
-  etaDisplay?: string;
-  distanceToHospitalMeters?: number;
+type DispatchInfo = {
+  ambulance: AmbulanceInfo | null;
+  driver: DriverInfo | null;
+  hospital: HospitalInfo | null;
+  etaSeconds: number;
+  etaDisplay: string;
+  distanceToHospitalMeters: number;
 };
 
-type SOSStatus = {
-  status?: string;
-  ambulance?: any;
-  ambulanceLocation?: Coordinate;
-  etaSeconds?: number;
-  etaDisplay?: string;
+type TrackingInfo = {
+  status: 'enroute' | 'arrived';
+
+  ambulance?: {
+    id: string;
+    vehicleNumber: string;
+    type: string;
+    currentLat: number;
+    currentLng: number;
+    status: string;
+  } | null;
+
+  user?: {
+    lat: number;
+    lng: number;
+  } | null;
+
   distanceRemainingMeters?: number;
-  distanceToHospitalMeters?: number;
+  etaSeconds?: number;
+  etaDisplay?: string;
 };
+
+// ========================================
+// HELPERS
+// ========================================
+
+const isValidCoordinate = (
+  latitude: unknown,
+  longitude: unknown
+): boolean => {
+  const lat = Number(latitude);
+  const lng = Number(longitude);
+
+  return (
+    Number.isFinite(lat) &&
+    Number.isFinite(lng) &&
+    lat >= -90 &&
+    lat <= 90 &&
+    lng >= -180 &&
+    lng <= 180
+  );
+};
+
+const toCoordinate = (
+  latitude: unknown,
+  longitude: unknown
+): Coordinate | null => {
+  if (!isValidCoordinate(latitude, longitude)) {
+    return null;
+  }
+
+  return {
+    latitude: Number(latitude),
+    longitude: Number(longitude),
+  };
+};
+
+const formatDistance = (
+  meters: number | null
+): string => {
+  if (
+    meters == null ||
+    !Number.isFinite(meters)
+  ) {
+    return '--';
+  }
+
+  if (meters >= 1000) {
+    return `${(
+      meters / 1000
+    ).toFixed(1)} km`;
+  }
+
+  return `${Math.round(meters)} m`;
+};
+
+// ========================================
+// SOS SCREEN
+// ========================================
 
 export default function SOSScreen() {
-  const mapRef = useRef<MapView | null>(null);
-  const trackingInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+  // ----------------------------------------
+  // SOS state
+  // ----------------------------------------
 
-  const [userLocation, setUserLocation] = useState<Coordinate | null>(null);
+  const [loading, setLoading] =
+    useState(false);
+
+  const [holding, setHolding] =
+    useState(false);
+
+  const [dispatch, setDispatch] =
+    useState<DispatchInfo | null>(null);
+
+  const [sosEventId, setSosEventId] =
+    useState<string | null>(null);
+
+  // ----------------------------------------
+  // Location
+  // ----------------------------------------
+
+  const [userLocation, setUserLocation] =
+    useState<Coordinate | null>(null);
+
   const [ambulanceLocation, setAmbulanceLocation] =
     useState<Coordinate | null>(null);
 
-  const [hospitals, setHospitals] = useState<Hospital[]>([]);
+  // ----------------------------------------
+  // Tracking
+  // ----------------------------------------
 
-  const [sosEventId, setSosEventId] = useState<string | null>(null);
+  const [tracking, setTracking] =
+    useState(false);
 
-  const [isTriggering, setIsTriggering] = useState(false);
-  const [sosActive, setSosActive] = useState(false);
-  const [tracking, setTracking] = useState(false);
+  const [trackingStatus, setTrackingStatus] =
+    useState<'enroute' | 'arrived'>(
+      'enroute'
+    );
 
-  const [etaDisplay, setEtaDisplay] = useState('--');
-  const [distanceDisplay, setDistanceDisplay] = useState('--');
+  const [distanceRemaining, setDistanceRemaining] =
+    useState<number | null>(null);
 
-  const [error, setError] = useState<string | null>(null);
+  const [liveEta, setLiveEta] =
+    useState<string | null>(null);
 
-  // ---------------------------------------------------------
-  // GET USER LOCATION
-  // ---------------------------------------------------------
+  // ----------------------------------------
+  // Animation
+  // ----------------------------------------
 
-  const getUserLocation = useCallback(async () => {
-    try {
-      const { status } =
-        await Location.requestForegroundPermissionsAsync();
+  const scale =
+    useRef(
+      new Animated.Value(1)
+    ).current;
 
-      if (status !== 'granted') {
-        setError('Location permission is required for SOS.');
-        return null;
+  const timer =
+    useRef<ReturnType<typeof setTimeout> | null>(
+      null
+    );
+
+  // ----------------------------------------
+  // Map
+  // ----------------------------------------
+
+  const mapRef =
+    useRef<MapView | null>(null);
+
+  const hasFittedMap =
+    useRef(false);
+
+  // ========================================
+  // CLEANUP
+  // ========================================
+
+  useEffect(() => {
+    return () => {
+      if (timer.current) {
+        clearTimeout(timer.current);
+        timer.current = null;
+      }
+    };
+  }, []);
+
+  // ========================================
+  // TRIGGER SOS
+  // ========================================
+
+  const triggerSOS = useCallback(
+    async () => {
+      if (loading || dispatch) {
+        return;
       }
 
-      const location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.High,
-      });
+      await Haptics.notificationAsync(
+        Haptics.NotificationFeedbackType.Warning
+      );
 
-      const coords: Coordinate = {
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
+      setLoading(true);
+
+      try {
+        // ------------------------------------
+        // LOCATION PERMISSION
+        // ------------------------------------
+
+        const permission =
+          await Location.requestForegroundPermissionsAsync();
+
+        if (
+          permission.status !== 'granted'
+        ) {
+          Alert.alert(
+            'Permission needed',
+            'Location access is required to send SOS.'
+          );
+
+          return;
+        }
+
+        // ------------------------------------
+        // GET LOCATION
+        // ------------------------------------
+
+        const location =
+          await Location.getCurrentPositionAsync({
+            accuracy:
+              Location.Accuracy.High,
+          });
+
+        const currentUserLocation: Coordinate = {
+          latitude:
+            location.coords.latitude,
+
+          longitude:
+            location.coords.longitude,
+        };
+
+        setUserLocation(
+          currentUserLocation
+        );
+
+        // ------------------------------------
+        // SEND SOS
+        // ------------------------------------
+
+        const triggerUrl =
+          `${BACKEND_URL}/api/sos/trigger`;
+
+        console.log(
+          '================================='
+        );
+
+        console.log(
+          'SOS TRIGGER REQUEST'
+        );
+
+        console.log(
+          'BACKEND URL:',
+          BACKEND_URL
+        );
+
+        console.log(
+          'TRIGGER URL:',
+          triggerUrl
+        );
+
+        console.log(
+          'USER ID:',
+          DEMO_USER_ID
+        );
+
+        console.log(
+          'LAT:',
+          currentUserLocation.latitude
+        );
+
+        console.log(
+          'LNG:',
+          currentUserLocation.longitude
+        );
+
+        console.log(
+          '================================='
+        );
+
+        const response =
+          await fetch(
+            triggerUrl,
+            {
+              method: 'POST',
+
+              headers: {
+                'Content-Type':
+                  'application/json',
+
+                Accept:
+                  'application/json',
+              },
+
+              body: JSON.stringify({
+                userId:
+                  DEMO_USER_ID,
+
+                lat:
+                  currentUserLocation.latitude,
+
+                lng:
+                  currentUserLocation.longitude,
+              }),
+            }
+          );
+
+        // ------------------------------------
+        // READ RESPONSE
+        // ------------------------------------
+
+        const responseText =
+          await response.text();
+
+        console.log(
+          'SOS HTTP status:',
+          response.status
+        );
+
+        console.log(
+          'SOS response:',
+          responseText
+        );
+
+        let data: any = {};
+
+        try {
+          data = responseText
+            ? JSON.parse(responseText)
+            : {};
+        } catch (error) {
+          console.error(
+            'SOS response was not valid JSON:',
+            error
+          );
+        }
+
+        // ------------------------------------
+        // ERROR RESPONSE
+        // ------------------------------------
+
+        if (!response.ok) {
+          Alert.alert(
+            'SOS failed',
+            data?.message ||
+              `Server returned HTTP ${response.status}.`
+          );
+
+          return;
+        }
+
+        // ------------------------------------
+        // VERIFY SOS EVENT ID
+        // ------------------------------------
+
+        if (!data?.sosEventId) {
+          console.error(
+            'No sosEventId returned:',
+            data
+          );
+
+          Alert.alert(
+            'SOS failed',
+            'The server did not return an SOS event ID.'
+          );
+
+          return;
+        }
+
+        // ------------------------------------
+        // SAVE DISPATCH
+        // ------------------------------------
+
+        const dispatchData: DispatchInfo = {
+          ambulance:
+            data.ambulance ?? null,
+
+          driver:
+            data.driver ?? null,
+
+          hospital:
+            data.hospital ?? null,
+
+          etaSeconds:
+            Number(
+              data.etaSeconds ?? 0
+            ),
+
+          etaDisplay:
+            String(
+              data.etaDisplay ?? '--'
+            ),
+
+          distanceToHospitalMeters:
+            Number(
+              data.distanceToHospitalMeters ?? 0
+            ),
+        };
+
+        setDispatch(
+          dispatchData
+        );
+
+        setSosEventId(
+          String(data.sosEventId)
+        );
+
+        // ------------------------------------
+        // INITIAL AMBULANCE LOCATION
+        // ------------------------------------
+
+        const initialAmbulance =
+          toCoordinate(
+            data.ambulance?.currentLat,
+            data.ambulance?.currentLng
+          );
+
+        if (initialAmbulance) {
+          setAmbulanceLocation(
+            initialAmbulance
+          );
+        }
+
+        // ------------------------------------
+        // ETA
+        // ------------------------------------
+
+        setLiveEta(
+          data.etaDisplay
+            ? String(data.etaDisplay)
+            : null
+        );
+
+        setDistanceRemaining(
+          null
+        );
+
+        setTrackingStatus(
+          'enroute'
+        );
+
+        hasFittedMap.current =
+          false;
+
+        // ------------------------------------
+        // START TRACKING
+        // ------------------------------------
+
+        setTracking(true);
+
+        // ------------------------------------
+        // SUCCESS
+        // ------------------------------------
+
+        Alert.alert(
+          'Help is on the way',
+
+          data.etaDisplay
+            ? `An ambulance is being dispatched.\n\nETA: ${data.etaDisplay}`
+            : 'An ambulance is being dispatched.'
+        );
+
+      } catch (error) {
+        console.error(
+          'SOS trigger error:',
+          error
+        );
+
+        Alert.alert(
+          'SOS failed',
+          'Could not reach the LifeLink server.'
+        );
+
+      } finally {
+        setLoading(false);
+      }
+    },
+    [
+      dispatch,
+      loading,
+    ]
+  );
+
+  // ========================================
+  // START HOLD
+  // ========================================
+
+  const startHold = () => {
+    if (
+      loading ||
+      dispatch ||
+      holding
+    ) {
+      return;
+    }
+
+    setHolding(true);
+
+    Animated.timing(
+      scale,
+      {
+        toValue: 0.92,
+
+        duration:
+          HOLD_DURATION,
+
+        useNativeDriver: true,
+      }
+    ).start();
+
+    timer.current =
+      setTimeout(
+        () => {
+          timer.current = null;
+
+          setHolding(false);
+
+          scale.setValue(1);
+
+          triggerSOS();
+        },
+        HOLD_DURATION
+      );
+  };
+
+  // ========================================
+  // CANCEL HOLD
+  // ========================================
+
+  const cancelHold = () => {
+    if (timer.current) {
+      clearTimeout(
+        timer.current
+      );
+
+      timer.current = null;
+    }
+
+    setHolding(false);
+
+    Animated.spring(
+      scale,
+      {
+        toValue: 1,
+
+        useNativeDriver: true,
+      }
+    ).start();
+  };
+
+  // ========================================
+  // LIVE AMBULANCE TRACKING
+  // ========================================
+
+  useEffect(() => {
+    if (
+      !sosEventId ||
+      !tracking
+    ) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const fetchAmbulanceStatus =
+      async () => {
+        try {
+          const trackingUrl =
+            `${BACKEND_URL}/api/sos/${encodeURIComponent(
+              sosEventId
+            )}/status`;
+
+          console.log(
+            '================================='
+          );
+
+          console.log(
+            'SOS TRACKING REQUEST'
+          );
+
+          console.log(
+            'BACKEND URL:',
+            BACKEND_URL
+          );
+
+          console.log(
+            'SOS EVENT ID:',
+            sosEventId
+          );
+
+          console.log(
+            'TRACKING URL:',
+            trackingUrl
+          );
+
+          console.log(
+            '================================='
+          );
+
+          const response =
+            await fetch(
+              trackingUrl,
+              {
+                method: 'GET',
+
+                headers: {
+                  Accept:
+                    'application/json',
+                },
+              }
+            );
+
+          const responseText =
+            await response.text();
+
+          console.log(
+            'Tracking HTTP status:',
+            response.status
+          );
+
+          console.log(
+            'Tracking response:',
+            responseText
+          );
+
+          if (cancelled) {
+            return;
+          }
+
+          // ----------------------------------
+          // SERVER ERROR
+          // ----------------------------------
+
+          if (!response.ok) {
+            let message =
+              responseText ||
+              `HTTP ${response.status}`;
+
+            try {
+              const errorData =
+                JSON.parse(
+                  responseText
+                );
+
+              message =
+                errorData?.message ||
+                errorData?.error ||
+                message;
+            } catch {
+              // Not JSON.
+            }
+
+            console.warn(
+              'Tracking request failed:',
+              response.status,
+              message
+            );
+
+            return;
+          }
+
+          // ----------------------------------
+          // PARSE JSON
+          // ----------------------------------
+
+          let data: TrackingInfo;
+
+          try {
+            data =
+              JSON.parse(
+                responseText
+              ) as TrackingInfo;
+
+          } catch (error) {
+            console.error(
+              'Invalid tracking JSON:',
+              error
+            );
+
+            return;
+          }
+
+          // ----------------------------------
+          // AMBULANCE POSITION
+          // ----------------------------------
+
+          const nextAmbulance =
+            toCoordinate(
+              data.ambulance?.currentLat,
+              data.ambulance?.currentLng
+            );
+
+          if (nextAmbulance) {
+            setAmbulanceLocation(
+              nextAmbulance
+            );
+          }
+
+          // ----------------------------------
+          // DISTANCE
+          // ----------------------------------
+
+          if (
+            data.distanceRemainingMeters != null
+          ) {
+            const distance =
+              Number(
+                data.distanceRemainingMeters
+              );
+
+            if (
+              Number.isFinite(distance)
+            ) {
+              setDistanceRemaining(
+                distance
+              );
+            }
+          }
+
+          // ----------------------------------
+          // ETA
+          // ----------------------------------
+
+          if (data.etaDisplay) {
+            setLiveEta(
+              String(
+                data.etaDisplay
+              )
+            );
+          }
+
+          // ----------------------------------
+          // STATUS
+          // ----------------------------------
+
+          if (
+            data.status === 'arrived'
+          ) {
+            setTrackingStatus(
+              'arrived'
+            );
+
+            setTracking(false);
+
+            await Haptics.notificationAsync(
+              Haptics.NotificationFeedbackType.Success
+            );
+
+          } else {
+            setTrackingStatus(
+              'enroute'
+            );
+          }
+
+        } catch (error) {
+          if (!cancelled) {
+            console.error(
+              'Ambulance tracking error:',
+              error
+            );
+          }
+        }
       };
 
-      setUserLocation(coords);
+    // --------------------------------------
+    // FIRST REQUEST IMMEDIATELY
+    // --------------------------------------
 
-      return coords;
-    } catch (err) {
-      console.error('Location error:', err);
-      setError('Unable to get your current location.');
-      return null;
-    }
-  }, []);
+    fetchAmbulanceStatus();
 
-  // ---------------------------------------------------------
-  // LOAD HOSPITALS
-  // ---------------------------------------------------------
+    // --------------------------------------
+    // POLL EVERY 3 SECONDS
+    // --------------------------------------
 
-  const loadHospitals = useCallback(async () => {
-    try {
-      console.log('Fetching hospitals...');
-
-      const response = await fetch(
-        `${BACKEND_URL}/api/hospitals`
+    const interval =
+      setInterval(
+        fetchAmbulanceStatus,
+        TRACKING_INTERVAL
       );
 
-      console.log('Hospital API status:', response.status);
-
-      if (!response.ok) {
-        throw new Error(`Hospital API failed: ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      const hospitalList = Array.isArray(data)
-        ? data
-        : data.hospitals || data.data || [];
-
-      setHospitals(hospitalList);
-
-      console.log(
-        `Successfully loaded ${hospitalList.length} hospitals`
-      );
-    } catch (err) {
-      console.error('Hospital loading error:', err);
-    }
-  }, []);
-
-  // ---------------------------------------------------------
-  // INITIAL LOAD
-  // ---------------------------------------------------------
-
-  useEffect(() => {
-    getUserLocation();
-    loadHospitals();
+    // --------------------------------------
+    // CLEANUP
+    // --------------------------------------
 
     return () => {
-      if (trackingInterval.current) {
-        clearInterval(trackingInterval.current);
-      }
+      cancelled = true;
+
+      clearInterval(
+        interval
+      );
     };
-  }, [getUserLocation, loadHospitals]);
 
-  // ---------------------------------------------------------
-  // FIT MAP TO USER + AMBULANCE
-  // ---------------------------------------------------------
-
-  useEffect(() => {
-    if (!mapRef.current || !userLocation || !ambulanceLocation) {
-      return;
-    }
-
-    const timer = setTimeout(() => {
-      mapRef.current?.fitToCoordinates(
-        [userLocation, ambulanceLocation],
-        {
-          edgePadding: {
-            top: 80,
-            right: 60,
-            bottom: 80,
-            left: 60,
-          },
-          animated: true,
-        }
-      );
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [userLocation, ambulanceLocation]);
-
-  // ---------------------------------------------------------
-  // TRACK AMBULANCE
-  // ---------------------------------------------------------
-
-  const fetchSOSStatus = useCallback(async () => {
-    if (!sosEventId) {
-      return;
-    }
-
-    try {
-      console.log('=================================');
-      console.log('SOS TRACKING REQUEST');
-      console.log('SOS EVENT ID:', sosEventId);
-
-      const url =
-        `${BACKEND_URL}/api/sos/${sosEventId}/status`;
-
-      console.log('TRACKING URL:', url);
-
-      const response = await fetch(url);
-
-      console.log(
-        'Tracking HTTP status:',
-        response.status
-      );
-
-      const text = await response.text();
-
-      console.log('Tracking response:', text);
-
-      if (!response.ok) {
-        console.warn(
-          'Tracking request failed:',
-          response.status,
-          text
-        );
-        return;
-      }
-
-      const data: SOSStatus = JSON.parse(text);
-
-      if (data.ambulanceLocation) {
-        setAmbulanceLocation({
-          latitude: data.ambulanceLocation.latitude,
-          longitude: data.ambulanceLocation.longitude,
-        });
-      }
-
-      if (data.etaDisplay) {
-        setEtaDisplay(data.etaDisplay);
-      } else if (
-        typeof data.etaSeconds === 'number'
-      ) {
-        const minutes = Math.floor(
-          data.etaSeconds / 60
-        );
-        const seconds = Math.floor(
-          data.etaSeconds % 60
-        );
-
-        setEtaDisplay(
-          `${minutes} min ${seconds}s`
-        );
-      }
-
-      if (
-        typeof data.distanceRemainingMeters ===
-        'number'
-      ) {
-        if (data.distanceRemainingMeters >= 1000) {
-          setDistanceDisplay(
-            `${(
-              data.distanceRemainingMeters / 1000
-            ).toFixed(1)} km`
-          );
-        } else {
-          setDistanceDisplay(
-            `${Math.round(
-              data.distanceRemainingMeters
-            )} m`
-          );
-        }
-      }
-
-      if (data.status === 'arrived') {
-        setEtaDisplay('Arrived');
-        setTracking(false);
-
-        if (trackingInterval.current) {
-          clearInterval(trackingInterval.current);
-          trackingInterval.current = null;
-        }
-      }
-    } catch (err) {
-      console.error(
-        'Tracking fetch error:',
-        err
-      );
-    }
-  }, [sosEventId]);
-
-  useEffect(() => {
-    if (!sosEventId || !sosActive) {
-      return;
-    }
-
-    setTracking(true);
-
-    fetchSOSStatus();
-
-    trackingInterval.current =
-      setInterval(() => {
-        fetchSOSStatus();
-      }, 3000);
-
-    return () => {
-      if (trackingInterval.current) {
-        clearInterval(trackingInterval.current);
-        trackingInterval.current = null;
-      }
-    };
   }, [
     sosEventId,
-    sosActive,
-    fetchSOSStatus,
+    tracking,
   ]);
 
-  // ---------------------------------------------------------
-  // TRIGGER SOS
-  // ---------------------------------------------------------
+  // ========================================
+  // FIT MAP
+  // ========================================
 
-  const triggerSOS = async () => {
-    if (isTriggering || sosActive) {
+  useEffect(() => {
+    if (
+      !mapRef.current ||
+      !userLocation ||
+      !ambulanceLocation
+    ) {
       return;
     }
 
-    setIsTriggering(true);
-    setError(null);
-
-    try {
-      const location =
-        userLocation || (await getUserLocation());
-
-      if (!location) {
-        Alert.alert(
-          'Location unavailable',
-          'Please allow location access and try again.'
-        );
-        return;
-      }
-
-      console.log('=================================');
-      console.log('SOS TRIGGER REQUEST');
-      console.log('BACKEND URL:', BACKEND_URL);
-      console.log(
-        'TRIGGER URL:',
-        `${BACKEND_URL}/api/sos/trigger`
-      );
-      console.log('USER ID:', DEMO_USER_ID);
-      console.log('LAT:', location.latitude);
-      console.log('LNG:', location.longitude);
-      console.log('=================================');
-
-      const response = await fetch(
-        `${BACKEND_URL}/api/sos/trigger`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            userId: DEMO_USER_ID,
-            lat: location.latitude,
-            lng: location.longitude,
-          }),
-        }
-      );
-
-      console.log(
-        'SOS HTTP status:',
-        response.status
-      );
-
-      const text = await response.text();
-
-      console.log('SOS response:', text);
-
-      if (!response.ok) {
-        throw new Error(
-          `SOS failed: ${response.status} ${text}`
-        );
-      }
-
-      const data: SOSResponse = JSON.parse(text);
-
-      if (!data.sosEventId) {
-        throw new Error(
-          'Backend did not return an SOS event ID.'
-        );
-      }
-
-      setSosEventId(data.sosEventId);
-      setSosActive(true);
-
-      if (data.etaDisplay) {
-        setEtaDisplay(data.etaDisplay);
-      }
-
-      if (
-        typeof data.distanceToHospitalMeters ===
-        'number'
-      ) {
-        if (
-          data.distanceToHospitalMeters >= 1000
-        ) {
-          setDistanceDisplay(
-            `${(
-              data.distanceToHospitalMeters /
-              1000
-            ).toFixed(1)} km`
-          );
-        } else {
-          setDistanceDisplay(
-            `${Math.round(
-              data.distanceToHospitalMeters
-            )} m`
-          );
-        }
-      }
-
-      // If backend immediately provides ambulance
-      // coordinates, show them right away.
-      if (
-        data.ambulance?.lat != null &&
-        data.ambulance?.lng != null
-      ) {
-        setAmbulanceLocation({
-          latitude: Number(data.ambulance.lat),
-          longitude: Number(data.ambulance.lng),
-        });
-      }
-
-      Alert.alert(
-        'SOS Activated',
-        'Help is on the way.'
-      );
-    } catch (err: any) {
-      console.error('SOS trigger error:', err);
-
-      setError(
-        err?.message ||
-          'Unable to trigger SOS.'
-      );
-
-      Alert.alert(
-        'SOS Error',
-        err?.message ||
-          'Unable to trigger SOS.'
-      );
-    } finally {
-      setIsTriggering(false);
-    }
-  };
-
-  // ---------------------------------------------------------
-  // MAP
-  // ---------------------------------------------------------
-
-  const renderMap = () => {
-    if (!userLocation) {
-      return (
-        <View style={styles.mapLoading}>
-          <ActivityIndicator size="large" />
-          <Text style={styles.mapLoadingText}>
-            Getting your location...
-          </Text>
-        </View>
-      );
+    if (
+      hasFittedMap.current
+    ) {
+      return;
     }
 
-    /*
-     * IMPORTANT:
-     * provider={PROVIDER_GOOGLE} is required for the
-     * Google Maps provider on Android.
-     */
-    return (
-      <MapView
-        ref={mapRef}
-        provider={PROVIDER_GOOGLE}
-        style={styles.map}
-        mapType="standard"
-        showsUserLocation={false}
-        showsMyLocationButton={false}
-        showsCompass={true}
-        loadingEnabled={true}
-        toolbarEnabled={false}
-        initialRegion={{
-          latitude: userLocation.latitude,
-          longitude: userLocation.longitude,
-          latitudeDelta: 0.04,
-          longitudeDelta: 0.04,
-        }}
-      >
-        {/* USER */}
-        <Marker
-          coordinate={userLocation}
-          title="Your location"
-          description="SOS location"
-          anchor={{ x: 0.5, y: 0.5 }}
-        >
-          <View style={styles.userMarker}>
-            <View style={styles.userMarkerInner} />
-          </View>
-        </Marker>
+    hasFittedMap.current =
+      true;
 
-        {/* AMBULANCE */}
-        {ambulanceLocation && (
-          <Marker
-            coordinate={ambulanceLocation}
-            title="Ambulance"
-            description="Ambulance approaching"
-            anchor={{ x: 0.5, y: 0.5 }}
-          >
-            <View style={styles.ambulanceMarker}>
-              <Text style={styles.ambulanceEmoji}>
-                🚑
-              </Text>
-            </View>
-          </Marker>
-        )}
+    const coordinates = [
+      userLocation,
+      ambulanceLocation,
+    ];
 
-        {/* ROUTE */}
-        {ambulanceLocation && (
-          <Polyline
-            coordinates={[
-              ambulanceLocation,
-              userLocation,
-            ]}
-            strokeWidth={4}
-            strokeColor="#E53935"
-            lineDashPattern={[8, 6]}
-          />
-        )}
-      </MapView>
-    );
+    const timeout =
+      setTimeout(
+        () => {
+          mapRef.current?.fitToCoordinates(
+            coordinates,
+            {
+              edgePadding: {
+                top: 70,
+                right: 50,
+                bottom: 70,
+                left: 50,
+              },
+
+              animated: true,
+            }
+          );
+        },
+        300
+      );
+
+    return () => {
+      clearTimeout(timeout);
+    };
+
+  }, [
+    userLocation,
+    ambulanceLocation,
+  ]);
+
+  // ========================================
+  // OPEN GOOGLE MAPS
+  // ========================================
+
+  const openMaps = (
+    lat: number,
+    lng: number,
+    label: string
+  ) => {
+    const url =
+      `https://www.google.com/maps?q=${lat},${lng}`;
+
+    Linking.openURL(
+      url
+    ).catch(() => {
+      Alert.alert(
+        'Maps not available',
+        `Could not open Maps for ${label}.`
+      );
+    });
   };
 
-  // ---------------------------------------------------------
-  // UI
-  // ---------------------------------------------------------
+  // ========================================
+  // RENDER
+  // ========================================
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* HEADER */}
+    <View
+      style={[
+        styles.container,
+        {
+          backgroundColor:
+            AppColors.background,
+        },
+      ]}
+    >
+      <SafeAreaView
+        style={styles.safeArea}
+      >
+        <ScreenHeader
+          title="Emergency"
+        />
 
-      <View style={styles.header}>
-        <Pressable
-          onPress={() => router.back()}
-          style={styles.backButton}
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={
+            styles.scrollContent
+          }
+          showsVerticalScrollIndicator={
+            false
+          }
         >
-          <Text style={styles.backText}>
-            ‹
-          </Text>
-        </Pressable>
 
-        <Text style={styles.headerTitle}>
-          Emergency SOS
-        </Text>
+          {/* LOCATION BANNER */}
 
-        <View style={styles.headerSpacer} />
-      </View>
-
-      {!sosActive ? (
-        <View style={styles.preSOSContainer}>
-          <View style={styles.warningCircle}>
-            <Text style={styles.warningText}>
-              SOS
-            </Text>
-          </View>
-
-          <Text style={styles.title}>
-            Need emergency help?
-          </Text>
-
-          <Text style={styles.subtitle}>
-            Press the button below to immediately
-            send an SOS and request an ambulance.
-          </Text>
-
-          <Pressable
-            onPress={triggerSOS}
-            disabled={isTriggering}
-            style={[
-              styles.sosButton,
-              isTriggering &&
-                styles.sosButtonDisabled,
-            ]}
+          <View
+            style={
+              styles.locationBanner
+            }
           >
-            {isTriggering ? (
-              <ActivityIndicator
-                color="#FFFFFF"
-                size="large"
-              />
-            ) : (
-              <>
-                <Text style={styles.sosButtonText}>
-                  SEND SOS
-                </Text>
-                <Text
-                  style={styles.sosButtonSubtext}
+            <Text
+              style={styles.pin}
+            >
+              📍
+            </Text>
+
+            <Text
+              style={
+                styles.locationText
+              }
+            >
+              Location shared automatically on trigger
+            </Text>
+          </View>
+
+          {/* ==================================
+              BEFORE SOS
+          ================================== */}
+
+          {!dispatch && (
+            <View
+              style={
+                styles.triggerSection
+              }
+            >
+              <Pressable
+                onPressIn={
+                  startHold
+                }
+                onPressOut={
+                  cancelHold
+                }
+                disabled={
+                  loading
+                }
+              >
+                <View
+                  style={
+                    styles.ring
+                  }
                 >
-                  Emergency assistance
+                  <Animated.View
+                    style={[
+                      styles.circle,
+                      {
+                        transform: [
+                          {
+                            scale,
+                          },
+                        ],
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={
+                        styles.warningIcon
+                      }
+                    >
+                      {loading
+                        ? '…'
+                        : '⚠️'}
+                    </Text>
+
+                    <Text
+                      style={
+                        styles.sosText
+                      }
+                    >
+                      SOS
+                    </Text>
+                  </Animated.View>
+                </View>
+              </Pressable>
+
+              <Text
+                style={
+                  styles.hint
+                }
+              >
+                {loading
+                  ? 'Sending alert…'
+                  : holding
+                  ? 'Keep holding…'
+                  : 'Hold for 1.5 seconds to trigger'}
+              </Text>
+            </View>
+          )}
+
+          {/* ==================================
+              AFTER SOS
+          ================================== */}
+
+          {dispatch && (
+            <View
+              style={
+                styles.dispatchCard
+              }
+            >
+
+              {/* STATUS */}
+
+              <View
+                style={
+                  styles.statusPill
+                }
+              >
+                <View
+                  style={
+                    styles.statusDot
+                  }
+                />
+
+                <Text
+                  style={
+                    styles.statusText
+                  }
+                >
+                  {trackingStatus ===
+                  'arrived'
+                    ? 'AMBULANCE ARRIVED'
+                    : 'AMBULANCE EN ROUTE'}
                 </Text>
-              </>
-            )}
-          </Pressable>
+              </View>
 
-          {error && (
-            <Text style={styles.errorText}>
-              {error}
-            </Text>
+              {/* ==================================
+                  MAP
+              ================================== */}
+
+              <View
+                style={
+                  styles.mapContainer
+                }
+              >
+
+                {userLocation &&
+                ambulanceLocation ? (
+
+                  <MapView
+                    ref={mapRef}
+
+                    // ==================================
+                    // GOOGLE MAPS PROVIDER
+                    // ==================================
+                    provider={
+                      PROVIDER_GOOGLE
+                    }
+
+                    style={
+                      styles.map
+                    }
+
+                    mapType="standard"
+
+                    showsUserLocation={
+                      false
+                    }
+
+                    showsMyLocationButton={
+                      false
+                    }
+
+                    showsCompass={
+                      true
+                    }
+
+                    loadingEnabled={
+                      true
+                    }
+
+                    toolbarEnabled={
+                      false
+                    }
+
+                    initialRegion={{
+                      latitude:
+                        userLocation.latitude,
+
+                      longitude:
+                        userLocation.longitude,
+
+                      latitudeDelta:
+                        0.08,
+
+                      longitudeDelta:
+                        0.08,
+                    }}
+                  >
+
+                    {/* USER MARKER */}
+
+                    <Marker
+                      coordinate={
+                        userLocation
+                      }
+                      title="Your location"
+                      description="Emergency location"
+                    >
+                      <View
+                        style={
+                          styles.userMarker
+                        }
+                      >
+                        <Text
+                          style={
+                            styles.userMarkerText
+                          }
+                        >
+                          📍
+                        </Text>
+                      </View>
+                    </Marker>
+
+                    {/* AMBULANCE MARKER */}
+
+                    <Marker
+                      coordinate={
+                        ambulanceLocation
+                      }
+                      title="Ambulance"
+                      description={
+                        dispatch
+                          .ambulance
+                          ?.vehicleNumber ||
+                        'Ambulance en route'
+                      }
+                      anchor={{
+                        x: 0.5,
+                        y: 0.5,
+                      }}
+                    >
+                      <View
+                        style={
+                          styles.ambulanceMarker
+                        }
+                      >
+                        <Text
+                          style={
+                            styles.ambulanceEmoji
+                          }
+                        >
+                          🚑
+                        </Text>
+                      </View>
+                    </Marker>
+
+                    {/* ROUTE LINE */}
+
+                    <Polyline
+                      coordinates={[
+                        ambulanceLocation,
+                        userLocation,
+                      ]}
+                      strokeWidth={
+                        4
+                      }
+                      strokeColor={
+                        AppColors.emergency
+                      }
+                      lineDashPattern={[
+                        8,
+                        6,
+                      ]}
+                    />
+
+                  </MapView>
+
+                ) : (
+
+                  <View
+                    style={
+                      styles.mapLoading
+                    }
+                  >
+                    <Text
+                      style={
+                        styles.loadingSpinner
+                      }
+                    >
+                      ◌
+                    </Text>
+
+                    <Text
+                      style={
+                        styles.mapLoadingText
+                      }
+                    >
+                      Locating ambulance...
+                    </Text>
+                  </View>
+
+                )}
+
+                {/* MAP OVERLAY */}
+
+                <View
+                  style={
+                    styles.mapOverlay
+                  }
+                >
+                  <View
+                    style={
+                      styles.mapOverlayDot
+                    }
+                  />
+
+                  <Text
+                    style={
+                      styles.mapOverlayText
+                    }
+                  >
+                    {trackingStatus ===
+                    'arrived'
+                      ? 'AMBULANCE HAS ARRIVED'
+                      : 'AMBULANCE EN ROUTE'}
+                  </Text>
+                </View>
+
+              </View>
+
+              {/* HELP MESSAGE */}
+
+              <Text
+                style={
+                  styles.dispatchTitle
+                }
+              >
+                🚑 Help is on the way
+              </Text>
+
+              <Text
+                style={
+                  styles.dispatchSubtitle
+                }
+              >
+                {trackingStatus ===
+                'arrived'
+                  ? 'The ambulance has reached your location'
+                  : 'Ambulance is approaching your location'}
+              </Text>
+
+              {/* ETA + DISTANCE */}
+
+              <View
+                style={
+                  styles.etaRow
+                }
+              >
+                <View
+                  style={
+                    styles.etaBadge
+                  }
+                >
+                  <Text
+                    style={
+                      styles.etaLabel
+                    }
+                  >
+                    ESTIMATED ARRIVAL
+                  </Text>
+
+                  <Text
+                    style={
+                      styles.etaValue
+                    }
+                  >
+                    {liveEta ||
+                      dispatch.etaDisplay ||
+                      '--'}
+                  </Text>
+                </View>
+
+                <View
+                  style={
+                    styles.etaBadgeSecondary
+                  }
+                >
+                  <Text
+                    style={
+                      styles.etaLabel
+                    }
+                  >
+                    DISTANCE
+                  </Text>
+
+                  <Text
+                    style={
+                      styles.etaValue
+                    }
+                  >
+                    {formatDistance(
+                      distanceRemaining
+                    )}
+                  </Text>
+                </View>
+              </View>
+
+              {/* ==================================
+                  AMBULANCE CARD
+              ================================== */}
+
+              {dispatch.ambulance && (
+                <View
+                  style={
+                    styles.infoCard
+                  }
+                >
+                  <View
+                    style={
+                      styles.infoCardHeader
+                    }
+                  >
+                    <Text
+                      style={
+                        styles.infoCardTitle
+                      }
+                    >
+                      🚑 AMBULANCE
+                    </Text>
+
+                    <View
+                      style={
+                        styles.liveBadge
+                      }
+                    >
+                      <View
+                        style={
+                          styles.liveDot
+                        }
+                      />
+
+                      <Text
+                        style={
+                          styles.liveText
+                        }
+                      >
+                        LIVE
+                      </Text>
+                    </View>
+                  </View>
+
+                  <Text
+                    style={
+                      styles.infoName
+                    }
+                  >
+                    {
+                      dispatch
+                        .ambulance
+                        .vehicleNumber
+                    }
+                  </Text>
+
+                  <Text
+                    style={
+                      styles.infoMeta
+                    }
+                  >
+                    {
+                      dispatch
+                        .ambulance
+                        .type
+                    }
+                  </Text>
+                </View>
+              )}
+
+              {/* ==================================
+                  DRIVER CARD
+              ================================== */}
+
+              {dispatch.driver && (
+                <TouchableOpacity
+                  style={
+                    styles.infoCard
+                  }
+                  onPress={() => {
+                    if (
+                      ambulanceLocation
+                    ) {
+                      openMaps(
+                        ambulanceLocation.latitude,
+                        ambulanceLocation.longitude,
+                        'Ambulance'
+                      );
+                    }
+                  }}
+                >
+                  <View
+                    style={
+                      styles.infoCardHeader
+                    }
+                  >
+                    <Text
+                      style={
+                        styles.infoCardTitle
+                      }
+                    >
+                      👨‍⚕️ DRIVER
+                    </Text>
+
+                    <Text
+                      style={
+                        styles.rating
+                      }
+                    >
+                      ★{' '}
+                      {Number(
+                        dispatch
+                          .driver
+                          .rating
+                      ).toFixed(1)}
+                    </Text>
+                  </View>
+
+                  <Text
+                    style={
+                      styles.infoName
+                    }
+                  >
+                    {
+                      dispatch
+                        .driver
+                        .name
+                    }
+                  </Text>
+
+                  <Text
+                    style={
+                      styles.infoMeta
+                    }
+                  >
+                    License:{' '}
+                    {
+                      dispatch
+                        .driver
+                        .licenseNumber
+                    }
+                  </Text>
+
+                  <Text
+                    style={
+                      styles.mapHint
+                    }
+                  >
+                    Tap to view ambulance location
+                  </Text>
+                </TouchableOpacity>
+              )}
+
+              {/* ==================================
+                  HOSPITAL CARD
+              ================================== */}
+
+              {dispatch.hospital && (
+                <TouchableOpacity
+                  style={[
+                    styles.infoCard,
+                    styles.hospitalCard,
+                  ]}
+                  onPress={() =>
+                    openMaps(
+                      dispatch
+                        .hospital!
+                        .lat,
+                      dispatch
+                        .hospital!
+                        .lng,
+                      'Hospital'
+                    )
+                  }
+                >
+                  <View
+                    style={
+                      styles.infoCardHeader
+                    }
+                  >
+                    <Text
+                      style={
+                        styles.infoCardTitle
+                      }
+                    >
+                      🏥 HOSPITAL
+                    </Text>
+                  </View>
+
+                  <Text
+                    style={
+                      styles.infoName
+                    }
+                  >
+                    {
+                      dispatch
+                        .hospital
+                        .name
+                    }
+                  </Text>
+
+                  <Text
+                    style={
+                      styles.infoMeta
+                    }
+                  >
+                    {
+                      dispatch
+                        .hospital
+                        .address
+                    }
+                  </Text>
+
+                  <Text
+                    style={
+                      styles.infoMeta
+                    }
+                  >
+                    📞{' '}
+                    {
+                      dispatch
+                        .hospital
+                        .phone
+                    }
+                  </Text>
+
+                  <Text
+                    style={
+                      styles.mapHint
+                    }
+                  >
+                    Tap to open hospital in Maps
+                  </Text>
+                </TouchableOpacity>
+              )}
+
+              {/* ==================================
+                  USER LOCATION
+              ================================== */}
+
+              <View
+                style={
+                  styles.pinCard
+                }
+              >
+                <Text
+                  style={
+                    styles.pinLabel
+                  }
+                >
+                  📍 YOUR LOCATION
+                </Text>
+
+                <Text
+                  style={
+                    styles.pinUrl
+                  }
+                >
+                  Live location shared with emergency contacts via SMS
+                </Text>
+              </View>
+
+            </View>
           )}
-        </View>
-      ) : (
-        <View style={styles.activeContainer}>
-          {/* STATUS */}
 
-          <View style={styles.statusCard}>
-            <View style={styles.statusDot} />
-
-            <View style={styles.statusTextContainer}>
-              <Text style={styles.statusTitle}>
-                AMBULANCE EN ROUTE
-              </Text>
-
-              <Text style={styles.statusSubtitle}>
-                Help is on the way
-              </Text>
-            </View>
-          </View>
-
-          {/* MAP */}
-
-          <View style={styles.mapContainer}>
-            {renderMap()}
-          </View>
-
-          {/* ETA */}
-
-          <View style={styles.infoRow}>
-            <View style={styles.infoCard}>
-              <Text style={styles.infoLabel}>
-                ETA
-              </Text>
-
-              <Text style={styles.infoValue}>
-                {etaDisplay}
-              </Text>
-            </View>
-
-            <View style={styles.infoCard}>
-              <Text style={styles.infoLabel}>
-                DISTANCE
-              </Text>
-
-              <Text style={styles.infoValue}>
-                {distanceDisplay}
-              </Text>
-            </View>
-          </View>
-
-          {/* AMBULANCE CARD */}
-
-          <View style={styles.ambulanceCard}>
-            <View style={styles.ambulanceIconBox}>
-              <Text style={styles.cardEmoji}>
-                🚑
-              </Text>
-            </View>
-
-            <View style={styles.ambulanceInfo}>
-              <Text style={styles.ambulanceTitle}>
-                Ambulance
-              </Text>
-
-              <Text style={styles.ambulanceSubtitle}>
-                {tracking
-                  ? 'Tracking live location'
-                  : 'Location tracking active'}
-              </Text>
-            </View>
-
-            <View style={styles.liveBadge}>
-              <View style={styles.liveDot} />
-              <Text style={styles.liveText}>
-                LIVE
-              </Text>
-            </View>
-          </View>
-
-          {error && (
-            <Text style={styles.errorText}>
-              {error}
-            </Text>
-          )}
-        </View>
-      )}
-    </SafeAreaView>
+        </ScrollView>
+      </SafeAreaView>
+    </View>
   );
 }
 
-// ---------------------------------------------------------
+// ========================================
+// DIMENSIONS
+// ========================================
+
+const CIRCLE_SIZE = 200;
+const RING_SIZE = 240;
+
+// ========================================
 // STYLES
-// ---------------------------------------------------------
+// ========================================
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F7F8FA',
-  },
+const styles =
+  StyleSheet.create({
 
-  header: {
-    height: 64,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 18,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-    backgroundColor: '#FFFFFF',
-  },
-
-  backButton: {
-    width: 42,
-    height: 42,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  backText: {
-    fontSize: 38,
-    lineHeight: 40,
-    color: '#111827',
-    fontWeight: '300',
-  },
-
-  headerTitle: {
-    flex: 1,
-    textAlign: 'center',
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-  },
-
-  headerSpacer: {
-    width: 42,
-  },
-
-  // -------------------------------------------------------
-  // PRE SOS
-  // -------------------------------------------------------
-
-  preSOSContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 32,
-  },
-
-  warningCircle: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: '#FEE2E2',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 24,
-  },
-
-  warningText: {
-    color: '#DC2626',
-    fontSize: 22,
-    fontWeight: '900',
-  },
-
-  title: {
-    fontSize: 25,
-    fontWeight: '800',
-    color: '#111827',
-    textAlign: 'center',
-    marginBottom: 10,
-  },
-
-  subtitle: {
-    fontSize: 15,
-    lineHeight: 22,
-    color: '#6B7280',
-    textAlign: 'center',
-    maxWidth: 340,
-    marginBottom: 36,
-  },
-
-  sosButton: {
-    width: 230,
-    height: 230,
-    borderRadius: 115,
-    backgroundColor: '#DC2626',
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 8,
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    shadowOffset: {
-      width: 0,
-      height: 6,
+    container: {
+      flex: 1,
     },
-  },
 
-  sosButtonDisabled: {
-    opacity: 0.7,
-  },
-
-  sosButtonText: {
-    color: '#FFFFFF',
-    fontSize: 28,
-    fontWeight: '900',
-  },
-
-  sosButtonSubtext: {
-    color: '#FEE2E2',
-    fontSize: 12,
-    marginTop: 5,
-    fontWeight: '600',
-  },
-
-  // -------------------------------------------------------
-  // ACTIVE SOS
-  // -------------------------------------------------------
-
-  activeContainer: {
-    flex: 1,
-    paddingHorizontal: 16,
-    paddingTop: 16,
-  },
-
-  statusCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-
-  statusDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#22C55E',
-    marginRight: 12,
-  },
-
-  statusTextContainer: {
-    flex: 1,
-  },
-
-  statusTitle: {
-    fontSize: 14,
-    fontWeight: '900',
-    color: '#16A34A',
-    letterSpacing: 0.5,
-  },
-
-  statusSubtitle: {
-    marginTop: 2,
-    fontSize: 13,
-    color: '#6B7280',
-  },
-
-  // -------------------------------------------------------
-  // MAP
-  // -------------------------------------------------------
-
-  mapContainer: {
-    width: '100%',
-    height: 260,
-    borderRadius: 16,
-    overflow: 'hidden',
-    backgroundColor: '#E5E7EB',
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-  },
-
-  map: {
-    flex: 1,
-  },
-
-  mapLoading: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#E5E7EB',
-  },
-
-  mapLoadingText: {
-    marginTop: 10,
-    color: '#6B7280',
-    fontSize: 13,
-  },
-
-  // -------------------------------------------------------
-  // USER MARKER
-  // -------------------------------------------------------
-
-  userMarker: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: 'rgba(37, 99, 235, 0.25)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  userMarkerInner: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#2563EB',
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-  },
-
-  // -------------------------------------------------------
-  // AMBULANCE MARKER
-  // -------------------------------------------------------
-
-  ambulanceMarker: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 6,
-    shadowOpacity: 0.2,
-    shadowRadius: 5,
-    shadowOffset: {
-      width: 0,
-      height: 2,
+    safeArea: {
+      flex: 1,
+      paddingTop:
+        Spacing.three,
+      paddingHorizontal:
+        Spacing.three,
     },
-    borderWidth: 2,
-    borderColor: '#DC2626',
-  },
 
-  ambulanceEmoji: {
-    fontSize: 24,
-  },
+    scroll: {
+      flex: 1,
+    },
 
-  // -------------------------------------------------------
-  // INFO
-  // -------------------------------------------------------
+    scrollContent: {
+      paddingBottom:
+        Spacing.four,
+    },
 
-  infoRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 12,
-  },
+    // ======================================
+    // LOCATION
+    // ======================================
 
-  infoCard: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
+    locationBanner: {
+      flexDirection:
+        'row',
 
-  infoLabel: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#9CA3AF',
-    letterSpacing: 0.8,
-  },
+      alignItems:
+        'center',
 
-  infoValue: {
-    marginTop: 4,
-    fontSize: 19,
-    fontWeight: '800',
-    color: '#111827',
-  },
+      gap:
+        Spacing.two,
 
-  // -------------------------------------------------------
-  // AMBULANCE CARD
-  // -------------------------------------------------------
+      backgroundColor:
+        AppColors.backgroundElement,
 
-  ambulanceCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 12,
-    padding: 14,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
+      borderRadius:
+        16,
 
-  ambulanceIconBox: {
-    width: 46,
-    height: 46,
-    borderRadius: 12,
-    backgroundColor: '#FEE2E2',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+      paddingVertical:
+        Spacing.two,
 
-  cardEmoji: {
-    fontSize: 25,
-  },
+      paddingHorizontal:
+        Spacing.three,
 
-  ambulanceInfo: {
-    flex: 1,
-    marginLeft: 12,
-  },
+      marginBottom:
+        Spacing.two,
+    },
 
-  ambulanceTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#111827',
-  },
+    pin: {
+      fontSize: 14,
+    },
 
-  ambulanceSubtitle: {
-    marginTop: 3,
-    fontSize: 12,
-    color: '#6B7280',
-  },
+    locationText: {
+      color:
+        AppColors.textSecondary,
 
-  liveBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 9,
-    paddingVertical: 5,
-    borderRadius: 10,
-    backgroundColor: '#DCFCE7',
-  },
+      fontSize: 13,
 
-  liveDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#16A34A',
-    marginRight: 5,
-  },
+      flex: 1,
+    },
 
-  liveText: {
-    fontSize: 10,
-    fontWeight: '900',
-    color: '#16A34A',
-  },
+    // ======================================
+    // SOS BUTTON
+    // ======================================
 
-  errorText: {
-    color: '#DC2626',
-    textAlign: 'center',
-    fontSize: 12,
-    marginTop: 10,
-  },
-});
+    triggerSection: {
+      alignItems:
+        'center',
+
+      justifyContent:
+        'center',
+
+      minHeight:
+        500,
+    },
+
+    ring: {
+      width:
+        RING_SIZE,
+
+      height:
+        RING_SIZE,
+
+      borderRadius:
+        RING_SIZE / 2,
+
+      backgroundColor:
+        'rgba(229, 72, 77, 0.15)',
+
+      alignItems:
+        'center',
+
+      justifyContent:
+        'center',
+    },
+
+    circle: {
+      width:
+        CIRCLE_SIZE,
+
+      height:
+        CIRCLE_SIZE,
+
+      borderRadius:
+        CIRCLE_SIZE / 2,
+
+      backgroundColor:
+        AppColors.emergency,
+
+      alignItems:
+        'center',
+
+      justifyContent:
+        'center',
+
+      gap: 4,
+    },
+
+    warningIcon: {
+      fontSize: 30,
+    },
+
+    sosText: {
+      color:
+        '#fff',
+
+      fontSize: 24,
+
+      fontWeight:
+        '800',
+
+      letterSpacing: 1,
+    },
+
+    hint: {
+      color:
+        AppColors.textSecondary,
+
+      marginTop:
+        Spacing.three,
+
+      fontSize: 13,
+    },
+
+    // ======================================
+    // DISPATCH
+    // ======================================
+
+    dispatchCard: {
+      width:
+        '100%',
+
+      marginTop:
+        Spacing.two,
+
+      backgroundColor:
+        AppColors.backgroundElement,
+
+      borderRadius:
+        16,
+
+      padding:
+        Spacing.three,
+
+      gap:
+        Spacing.two,
+    },
+
+    // ======================================
+    // STATUS
+    // ======================================
+
+    statusPill: {
+      alignSelf:
+        'flex-start',
+
+      flexDirection:
+        'row',
+
+      alignItems:
+        'center',
+
+      gap: 8,
+
+      backgroundColor:
+        AppColors.background,
+
+      borderRadius:
+        20,
+
+      paddingVertical:
+        10,
+
+      paddingHorizontal:
+        16,
+    },
+
+    statusDot: {
+      width: 10,
+
+      height: 10,
+
+      borderRadius: 5,
+
+      backgroundColor:
+        AppColors.success,
+    },
+
+    statusText: {
+      color:
+        AppColors.text,
+
+      fontSize: 12,
+
+      fontWeight:
+        '800',
+
+      letterSpacing:
+        0.5,
+    },
+
+    // ======================================
+    // GOOGLE MAP
+    // ======================================
+
+    mapContainer: {
+      width:
+        '100%',
+
+      height:
+        260,
+
+      borderRadius:
+        16,
+
+      overflow:
+        'hidden',
+
+      backgroundColor:
+        AppColors.background,
+
+      borderWidth:
+        1,
+
+      borderColor:
+        AppColors.cardBorder,
+    },
+
+    map: {
+      flex: 1,
+    },
+
+    mapLoading: {
+      flex: 1,
+
+      alignItems:
+        'center',
+
+      justifyContent:
+        'center',
+
+      backgroundColor:
+        AppColors.background,
+    },
+
+    loadingSpinner: {
+      color:
+        AppColors.emergency,
+
+      fontSize: 44,
+
+      marginBottom: 8,
+    },
+
+    mapLoadingText: {
+      color:
+        AppColors.textSecondary,
+
+      fontSize: 14,
+    },
+
+    // ======================================
+    // MAP OVERLAY
+    // ======================================
+
+    mapOverlay: {
+      position:
+        'absolute',
+
+      top: 12,
+
+      left: 12,
+
+      flexDirection:
+        'row',
+
+      alignItems:
+        'center',
+
+      gap: 8,
+
+      backgroundColor:
+        'rgba(20,20,22,0.90)',
+
+      borderRadius:
+        18,
+
+      paddingVertical: 8,
+
+      paddingHorizontal: 12,
+    },
+
+    mapOverlayDot: {
+      width: 8,
+
+      height: 8,
+
+      borderRadius: 4,
+
+      backgroundColor:
+        AppColors.success,
+    },
+
+    mapOverlayText: {
+      color:
+        AppColors.text,
+
+      fontSize: 10,
+
+      fontWeight:
+        '800',
+
+      letterSpacing:
+        0.4,
+    },
+
+    // ======================================
+    // MAP MARKERS
+    // ======================================
+
+    userMarker: {
+      alignItems:
+        'center',
+
+      justifyContent:
+        'center',
+
+      width: 42,
+
+      height: 42,
+
+      borderRadius: 21,
+
+      backgroundColor:
+        AppColors.emergency,
+
+      borderWidth: 3,
+
+      borderColor:
+        '#fff',
+    },
+
+    userMarkerText: {
+      fontSize: 20,
+    },
+
+    ambulanceMarker: {
+      width: 48,
+
+      height: 48,
+
+      borderRadius: 24,
+
+      backgroundColor:
+        AppColors.success,
+
+      alignItems:
+        'center',
+
+      justifyContent:
+        'center',
+
+      borderWidth: 3,
+
+      borderColor:
+        '#fff',
+    },
+
+    ambulanceEmoji: {
+      fontSize: 24,
+    },
+
+    // ======================================
+    // DISPATCH TITLE
+    // ======================================
+
+    dispatchTitle: {
+      color:
+        AppColors.success,
+
+      fontSize: 20,
+
+      fontWeight:
+        '800',
+
+      textAlign:
+        'center',
+
+      marginTop:
+        Spacing.one,
+    },
+
+    dispatchSubtitle: {
+      color:
+        AppColors.textSecondary,
+
+      fontSize: 13,
+
+      textAlign:
+        'center',
+    },
+
+    // ======================================
+    // ETA
+    // ======================================
+
+    etaRow: {
+      flexDirection:
+        'row',
+
+      gap:
+        Spacing.two,
+
+      justifyContent:
+        'center',
+    },
+
+    etaBadge: {
+      flex: 1,
+
+      backgroundColor:
+        AppColors.success + '22',
+
+      borderRadius:
+        12,
+
+      paddingVertical:
+        Spacing.one + 2,
+
+      paddingHorizontal:
+        Spacing.two,
+
+      alignItems:
+        'center',
+
+      borderWidth:
+        1,
+
+      borderColor:
+        AppColors.success + '44',
+    },
+
+    etaBadgeSecondary: {
+      flex: 1,
+
+      backgroundColor:
+        AppColors.backgroundSelected,
+
+      borderRadius:
+        12,
+
+      paddingVertical:
+        Spacing.one + 2,
+
+      paddingHorizontal:
+        Spacing.two,
+
+      alignItems:
+        'center',
+
+      borderWidth:
+        1,
+
+      borderColor:
+        AppColors.cardBorder,
+    },
+
+    etaLabel: {
+      color:
+        AppColors.textSecondary,
+
+      fontSize: 9,
+
+      fontWeight:
+        '600',
+
+      letterSpacing:
+        0.5,
+
+      marginBottom: 2,
+    },
+
+    etaValue: {
+      color:
+        AppColors.text,
+
+      fontSize: 14,
+
+      fontWeight:
+        '700',
+    },
+
+    // ======================================
+    // INFO CARDS
+    // ======================================
+
+    infoCard: {
+      backgroundColor:
+        AppColors.background,
+
+      borderRadius:
+        12,
+
+      padding:
+        Spacing.three,
+
+      borderWidth:
+        1,
+
+      borderColor:
+        AppColors.cardBorder,
+    },
+
+    hospitalCard: {
+      borderColor:
+        AppColors.success + '44',
+    },
+
+    infoCardHeader: {
+      flexDirection:
+        'row',
+
+      justifyContent:
+        'space-between',
+
+      alignItems:
+        'center',
+
+      marginBottom:
+        Spacing.one,
+    },
+
+    infoCardTitle: {
+      color:
+        AppColors.textSecondary,
+
+      fontSize: 10,
+
+      fontWeight:
+        '700',
+
+      letterSpacing:
+        0.5,
+    },
+
+    infoName: {
+      color:
+        AppColors.text,
+
+      fontSize: 15,
+
+      fontWeight:
+        '700',
+
+      marginBottom:
+        Spacing.half,
+    },
+
+    infoMeta: {
+      color:
+        AppColors.textSecondary,
+
+      fontSize: 12,
+
+      marginBottom:
+        Spacing.half,
+    },
+
+    rating: {
+      color:
+        AppColors.success,
+
+      fontSize: 11,
+
+      fontWeight:
+        '600',
+    },
+
+    // ======================================
+    // LIVE BADGE
+    // ======================================
+
+    liveBadge: {
+      flexDirection:
+        'row',
+
+      alignItems:
+        'center',
+
+      gap: 5,
+    },
+
+    liveDot: {
+      width: 7,
+
+      height: 7,
+
+      borderRadius: 4,
+
+      backgroundColor:
+        AppColors.success,
+    },
+
+    liveText: {
+      color:
+        AppColors.success,
+
+      fontSize: 9,
+
+      fontWeight:
+        '800',
+
+      letterSpacing:
+        0.5,
+    },
+
+    // ======================================
+    // LOCATION CARD
+    // ======================================
+
+    pinCard: {
+      backgroundColor:
+        AppColors.emergency + '15',
+
+      borderRadius:
+        12,
+
+      padding:
+        Spacing.three,
+
+      borderWidth:
+        1,
+
+      borderColor:
+        AppColors.emergency + '33',
+
+      alignItems:
+        'center',
+    },
+
+    pinLabel: {
+      color:
+        AppColors.emergency,
+
+      fontSize: 10,
+
+      fontWeight:
+        '700',
+
+      letterSpacing:
+        0.5,
+
+      marginBottom:
+        Spacing.half,
+    },
+
+    pinUrl: {
+      color:
+        AppColors.textSecondary,
+
+      fontSize: 12,
+
+      textAlign:
+        'center',
+
+      fontWeight:
+        '500',
+    },
+
+    mapHint: {
+      color:
+        AppColors.success,
+
+      fontSize: 11,
+
+      fontWeight:
+        '600',
+
+      marginTop:
+        Spacing.half,
+
+      opacity: 0.85,
+    },
+  });

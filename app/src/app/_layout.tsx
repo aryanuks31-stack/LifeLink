@@ -3,17 +3,24 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'react-native';
+import { AppColors } from '@/constants/theme';
 
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
-      <StatusBar barStyle="dark-content" />
+      {/* Whole app is dark-themed now, so status bar text/icons should be light */}
+      <StatusBar barStyle="light-content" />
       <Tabs
         screenOptions={({ route }) => ({
           headerShown: false,
-          tabBarActiveTintColor: '#e74c3c',
-          tabBarInactiveTintColor: '#666',
-          tabBarStyle: { height: 62, paddingBottom: 6 },
+          tabBarActiveTintColor: AppColors.emergency,
+          tabBarInactiveTintColor: AppColors.textSecondary,
+          tabBarStyle: {
+            height: 62,
+            paddingBottom: 6,
+            backgroundColor: AppColors.backgroundElement,
+            borderTopColor: AppColors.cardBorder,
+          },
           tabBarLabelStyle: { fontSize: 12 },
           tabBarIcon: ({ color, size }) => {
             let name: React.ComponentProps<typeof Ionicons>['name'] = 'ellipse';
@@ -27,7 +34,7 @@ export default function RootLayout() {
                 name = 'warning-outline';
                 break;
               case 'beds':
-                name = 'medkit-outline';
+                name = 'bed-outline'; // was medkit-outline — duplicated the Medicines icon
                 break;
               case 'medicines':
                 name = 'medkit-outline';
